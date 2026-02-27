@@ -1,0 +1,525 @@
+openapi: 3.0.0
+info:
+  title: Manas360 Admin API
+  description: Administration API for managing users, therapists, and platform metrics
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@manas360.com
+  license:
+    name: MIT
+
+servers:
+  - url: https://api.manas360.com/api/v1/admin
+    description: Production server
+  - url: http://localhost:3000/api/v1/admin
+    description: Development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token with admin role
+
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: uuid
+          description: MongoDB ObjectId
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [patient, therapist, admin]
+        phoneNumber:
+          type: string
+        isEmailVerified:
+          type: boolean
+        isDeleted:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TherapistProfile:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        licenseNumber:
+          type: string
+        specializations:
+          type: array
+          items:
+            type: string
+        yearsOfExperience:
+          type: integer
+          minimum: 0
+        isVerified:
+          type: boolean
+        verifiedAt:
+          type: string
+          format: date-time
+          nullable: true
+        verifiedBy:
+          type: string
+          format: uuid
+          nullable: true
+        bio:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Subscription:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        planType:
+          type: string
+          enum: [basic, premium, pro]
+        status:
+          type: string
+          enum: [active, expired, cancelled, paused]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        autoRenew:
+          type: boolean
+        user:
+          type: object
+          properties:
+            _id:
+              type: string
+            email:
+              type: string
+            firstName:
+              type: string
+            lastName:
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+        total:
+          type: integer
+        totalPages:
+          type: integer
+
+    Metrics:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        totalTherapists:
+          type: integer
+        verifiedTherapists:
+          type: integer
+        completedSessions:
+          type: integer
+        totalRevenue:
+          type: number
+        activeSubscriptions:
+          type: integer
+
+    SuccessResponse:
+      type: object
+      required:
+        - success
+        - data
+        - message
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+        details:
+          type: object
+          nullable: true
+
+security:
+  - bearerAuth: []
+
+paths:
+  /users:
+    get:
+      summary: List all users
+      description: Retrieve a paginated list of all users with optional filtering by role and status
+      operationId: listUsers
+      tags:
+        - Users
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Items per page (max 50)
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+        - name: role
+          in: query
+          description: Filter by user role
+          required: false
+          schema:
+            type: string
+            enum: [patient, therapist, admin]
+        - name: status
+          in: query
+          description: Filter by user status
+          required: false
+          schema:
+            type: string
+            enum: [active, deleted]
+      responses:
+        "200":
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          users:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/User"
+                          pagination:
+                            $ref: "#/components/schemas/Pagination"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: User account has been deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{id}:
+    get:
+      summary: Get single user
+      description: Retrieve details of a single user by their MongoDB ObjectId
+      operationId: getUser
+      tags:
+        - Users
+      parameters:
+        - name: id
+          in: path
+          description: User MongoDB ObjectId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid user ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: User account has been deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /therapists/{id}/verify:
+    patch:
+      summary: Verify therapist
+      description: Verify a therapist's credentials and mark profile as verified
+      operationId: verifyTherapist
+      tags:
+        - Therapists
+      parameters:
+        - name: id
+          in: path
+          description: Therapist Profile MongoDB ObjectId
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Empty body
+        content:
+          application/json: {}
+      responses:
+        "200":
+          description: Therapist verified successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/TherapistProfile"
+        "400":
+          description: Invalid therapist profile ID format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Therapist profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: User account has been deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /metrics:
+    get:
+      summary: Get platform metrics
+      description: Retrieve comprehensive platform metrics and statistics
+      operationId: getMetrics
+      tags:
+        - Analytics
+      responses:
+        "200":
+          description: Metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/Metrics"
+        "401":
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: User account has been deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server error during metric calculation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /subscriptions:
+    get:
+      summary: List subscriptions
+      description: Retrieve a paginated list of subscriptions with optional filtering by plan type and status
+      operationId: listSubscriptions
+      tags:
+        - Subscriptions
+      parameters:
+        - name: page
+          in: query
+          description: Page number (1-indexed)
+          required: false
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          description: Items per page (max 50)
+          required: false
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+        - name: planType
+          in: query
+          description: Filter by subscription plan
+          required: false
+          schema:
+            type: string
+            enum: [basic, premium, pro]
+        - name: status
+          in: query
+          description: Filter by subscription status
+          required: false
+          schema:
+            type: string
+            enum: [active, expired, cancelled, paused]
+            default: active
+      responses:
+        "200":
+          description: Subscriptions retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          subscriptions:
+                            type: array
+                            items:
+                              $ref: "#/components/schemas/Subscription"
+                          pagination:
+                            $ref: "#/components/schemas/Pagination"
+        "400":
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid authentication token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Admin role required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: User account has been deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
