@@ -6,3 +6,397 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// ============ ENUMS ============
+
+enum UserRole {
+  PATIENT
+  THERAPIST
+  ADMIN
+}
+
+enum SessionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  DEPRECATED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TEXT
+  SLIDER
+  CHECKBOX
+}
+
+enum PatientSessionStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+  PAUSED
+}
+
+enum BranchingConditionOperator {
+  EQUALS
+  NOT_EQUALS
+  CONTAINS
+  GREATER_THAN
+  LESS_THAN
+  IN_ARRAY
+}
+
+// ============ USERS ============
+
+model User {
+  id                     String   @id @default(cuid())
+  email                  String   @unique
+  firstName              String
+  lastName               String
+  role                   UserRole
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  therapistSessions      CBTSessionTemplate[] @relation("TherapistSessions")
+  patientSessions        PatientSession[]
+  sessionResponses       PatientSessionResponse[]
+  
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ============ CBT SESSION TEMPLATES ============
+
+model CBTSessionTemplate {
+  id                     String   @id @default(cuid())
+  title                  String
+  description            String?
+  isOfficial             Boolean  @default(false)
+  originTemplateId       String?
+  visibility             String   @default("ORG")
+  latestPublishedVersionId String?
+  version                Int      @default(1)
+  status                 SessionStatus @default(DRAFT)
+  category               String?  // e.g., "Anxiety", "Depression", "Sleep"
+  targetAudience         String?  // e.g., "Adults", "Teenagers"
+  estimatedDuration      Int?     // in minutes
+  
+  // Metadata
+  therapistId            String
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  publishedAt            DateTime?
+  
+  // Relations
+  therapist              User     @relation("TherapistSessions", fields: [therapistId], references: [id], onDelete: Cascade)
+  questions              CBTQuestion[]
+  patientSessions        PatientSession[]
+  versions               CBTSessionVersion[]
+  tags                   TemplateTagOnTemplate[]
+  
+  @@index([therapistId])
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
+  @@unique([id, version])
+  @@fulltext([title, description])
+  @@map("cbt_session_templates")
+}
+
+model TemplateTag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  templates TemplateTagOnTemplate[]
+
+  @@map("template_tags")
+}
+
+model TemplateTagOnTemplate {
+  templateId String
+  tagId      String
+  template   CBTSessionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  tag        TemplateTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([templateId, tagId])
+  @@index([tagId])
+  @@map("template_tags_on_templates")
+}
+
+// ============ SESSION VERSIONING ============
+
+model CBTSessionVersion {
+  id                     String   @id @default(cuid())
+  sessionId              String
+  version                Int
+  snapshotData           Json     // Full snapshot of template at this version
+  changeNotes            String?
+  createdBy              String?
+  createdAt              DateTime @default(now())
+  publishedAt            DateTime?
+  isDraft                Boolean  @default(true)
+  checksum               String?
+  
+  // Relations
+  session                CBTSessionTemplate @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@unique([sessionId, version])
+  @@index([sessionId])
+  @@index([createdAt])
+  @@map("cbt_session_versions")
+}
+
+// ============ QUESTIONS ============
+
+model CBTQuestion {
+  id                     String   @id @default(cuid())
+  sessionId              String
+  type                   QuestionType
+  prompt                 String
+  description            String?
+  orderIndex             Int      // Order within session
+  isRequired             Boolean  @default(true)
+  helpText               String?
+  
+  // Type-specific configurations stored as JSON
+  // For MULTIPLE_CHOICE: { options: [{ id, label, value }] }
+  // For SLIDER: { min, max, step, labels: { min?, mid?, max? } }
+  // For CHECKBOX: { options: [{ id, label, value }] }
+  // For TEXT: { minLength?, maxLength?, placeholder?, validationRegex? }
+  metadata               Json?
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  // Relations
+  session                CBTSessionTemplate @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  branchingRules         QuestionBranchingRule[] @relation("BranchingFromQuestion")
+  parentBranchingRules   QuestionBranchingRule[] @relation("BranchingToQuestion")
+  responses              PatientResponse[]
+  
+  @@index([sessionId])
+  @@index([orderIndex])
+  @@unique([sessionId, orderIndex])
+  @@map("cbt_questions")
+}
+
+// ============ BRANCHING LOGIC ============
+
+model QuestionBranchingRule {
+  id                     String   @id @default(cuid())
+  fromQuestionId         String
+  toQuestionId           String
+  condition              Json     // { operator: "EQUALS", value: "yes" }
+  operator               BranchingConditionOperator
+  conditionValue         String   // The value to match against
+  
+  // Optional: Multiple conditions (AND logic)
+  // { conditions: [{ operator, value }, ...] }
+  complexCondition       Json?
+  
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  
+  // Relations
+  fromQuestion           CBTQuestion @relation("BranchingFromQuestion", fields: [fromQuestionId], references: [id], onDelete: Cascade)
+  toQuestion             CBTQuestion @relation("BranchingToQuestion", fields: [toQuestionId], references: [id], onDelete: Cascade)
+  
+  @@index([fromQuestionId])
+  @@index([toQuestionId])
+  @@index([fromQuestionId, toQuestionId])
+  @@map("question_branching_rules")
+}
+
+// ============ PATIENT SESSIONS (Session Instances) ============
+
+model PatientSession {
+  id                     String   @id @default(cuid())
+  patientId              String
+  templateId             String
+  templateVersion        Int      // Lock to specific template version (deprecated)
+  templateVersionId      String?  // reference to CBTSessionVersion.id
+  templateSnapshot       Json?    // snapshot of the template at session start (immutable)
+  status                 PatientSessionStatus @default(NOT_STARTED)
+  
+  // Progress tracking
+  currentQuestionIndex   Int      @default(0)
+  completedAt            DateTime?
+  abandonedAt            DateTime?
+  startedAt              DateTime?
+  
+  // Session metadata
+  sessionNotes           String?  // Therapist notes about this session
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  // Relations
+  patient                User     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  template               CBTSessionTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  responses              PatientSessionResponse[]
+  exports                SessionExport[]
+  
+  @@index([patientId])
+  @@index([templateId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([patientId, status])
+  @@map("patient_sessions")
+}
+
+// ============ PATIENT RESPONSES ============
+
+model PatientSessionResponse {
+  id                     String   @id @default(cuid())
+  sessionId              String
+  patientId              String
+  questionId             String
+  
+  // Response data (flexible to support all question types)
+  // MULTIPLE_CHOICE: { selectedOptionId: "abc123" }
+  // TEXT: { text: "Patient's response" }
+  // SLIDER: { value: 7, min: 0, max: 10 }
+  // CHECKBOX: { selectedOptions: ["opt1", "opt2"] }
+  responseData           Json
+  
+  // Timing
+  timeSpentSeconds       Int?     // Time spent on this question
+  answeredAt             DateTime @default(now())
+  // Message acknowledgement fields
+  messageId              String?  @unique
+  deliveredToStream      Boolean  @default(false)
+  acknowledgedAt         DateTime?
+  retryCount             Int      @default(0)
+  
+  // Related response for follow-ups
+  previousResponseId     String?
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  // Relations
+  session                PatientSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  patient                User @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  question               CBTQuestion @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  previousResponse       PatientSessionResponse? @relation("FollowUpResponse", fields: [previousResponseId], references: [id], onDelete: SetNull)
+  followUpResponses      PatientSessionResponse[] @relation("FollowUpResponse")
+  
+  @@unique([sessionId, questionId])
+  @@index([sessionId])
+  @@index([patientId])
+  @@index([questionId])
+  @@index([answeredAt])
+  @@index([sessionId, patientId])
+  @@map("patient_session_responses")
+}
+
+// ============ RESPONSE ANALYTICS ============
+
+model PatientResponse {
+  id                     String   @id @default(cuid())
+  questionId             String
+  
+  // Aggregated response data
+  // { multipleChoice: { optionId: count }, text: { ... }, slider: { average, min, max } }
+  responseStats          Json
+  totalResponses         Int      @default(0)
+  
+  updatedAt              DateTime @updatedAt
+  
+  // Relations
+  question               CBTQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  
+  @@unique([questionId])
+  @@index([questionId])
+  @@map("patient_responses")
+}
+
+// ============ SESSION EXPORTS ============
+
+model SessionExport {
+  id                     String   @id @default(cuid())
+  sessionId              String
+  format                 String   // "PDF" | "CSV" | "JSON"
+  fileName               String
+  filePath               String?  // S3 path or local path
+  fileSize               Int?
+  
+  // Export status
+  status                 String   @default("PENDING") // "PENDING" | "COMPLETED" | "FAILED"
+  errorMessage           String?
+  
+  createdAt              DateTime @default(now())
+  expiresAt              DateTime? // For temporary files
+  
+  // Relations
+  session                PatientSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  @@index([sessionId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("session_exports")
+}
+
+// ============ SESSION TEMPLATES LIBRARY ============
+
+model SessionTemplateLibrary {
+  id                     String   @id @default(cuid())
+  templateId             String
+  category               String   // "Public" | "Organization" | "Private"
+  tags                   String[] // ["anxiety", "cbt", "beginner"]
+  ratings                Int?     // Average rating
+  downloads              Int      @default(0)
+  isApproved             Boolean  @default(false)
+  approvedBy             String?  // Admin user ID
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  // Relations
+  template               CBTSessionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  
+  @@unique([templateId])
+  @@index([category])
+  @@index([isApproved])
+  @@map("session_template_library")
+}
+
+// ============ AUDIT & COMPLIANCE ============
+
+model SessionAuditLog {
+  id                     String   @id @default(cuid())
+  sessionId              String?
+  userId                 String?
+  action                 String   // "CREATED", "UPDATED", "DELETED", "PUBLISHED"
+  entityType             String   // "SESSION_TEMPLATE", "PATIENT_SESSION", "RESPONSE"
+  entityId               String
+  changes                Json?    // Diff of what changed
+  ipAddress              String?
+  
+  createdAt              DateTime @default(now())
+  
+  @@index([sessionId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("session_audit_logs")
+}
+
+// ============ PRESENCE TRACKING ============
+
+model SessionPresence {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String
+  role      UserRole
+  status    String   @default("OFFLINE")
+  lastSeenAt DateTime @default(now())
+  clientCount Int     @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([sessionId, userId, role])
+  @@index([sessionId])
+  @@index([userId])
+  @@map("session_presence")
+}

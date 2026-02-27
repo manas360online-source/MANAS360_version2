@@ -1,3 +1,15 @@
+import * as express from 'express';
+
+declare global {
+	namespace Express {
+		interface Request {
+			user?: { id: string; role?: string } | null;
+			auth?: { userId?: string; sessionId?: string; jti?: string; role?: string } | null;
+		}
+	}
+}
+
+export {};
 export {};
 
 import type { ProfileUpdatePayload } from '../utils/constants';

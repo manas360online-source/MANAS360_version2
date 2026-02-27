@@ -5,6 +5,7 @@ import { env } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logger.middleware';
 import apiRoutes from './routes';
+import client from 'prom-client';
 
 const app = express();
 
@@ -16,6 +17,19 @@ app.use(cookieParser());
 app.use(requestLogger);
 
 app.use(env.apiPrefix, apiRoutes);
+
+// Prometheus metrics endpoint
+const collectDefaultMetrics = client.collectDefaultMetrics;
+collectDefaultMetrics({ timeout: 5000 });
+app.get('/metrics', async (_req, res) => {
+	try {
+		const metrics = await client.register.metrics();
+		res.set('Content-Type', client.register.contentType);
+		res.send(metrics);
+	} catch (err) {
+		res.status(500).send('metrics error');
+	}
+});
 
 app.use(notFoundHandler);
 app.use(errorHandler);

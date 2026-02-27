@@ -9,7 +9,7 @@ import {
   CtaSection,
   BackgroundParticles,
   CrisisBanner,
-} from './';
+} from '../components/LandingPage';
 
 /**
  * LandingPage Component

@@ -1,6 +1,7 @@
 import app from './app';
 import { connectDatabase, disconnectDatabase } from './config/db';
 import { env } from './config/env';
+import initSocket from './socket';
 
 const startServer = async (): Promise<void> => {
 	await connectDatabase();
@@ -8,6 +9,9 @@ const startServer = async (): Promise<void> => {
 	const server = app.listen(env.port, () => {
 		console.log(`Server running on port ${env.port}`);
 	});
+
+	// initialize socket.io (non-blocking)
+	void initSocket(server).then(() => console.log('Socket server initialized')).catch((err) => console.error('Socket init failed', err));
 
 	const shutdown = async (signal: string): Promise<void> => {
 		console.log(`${signal} received. Shutting down gracefully...`);

@@ -8,7 +8,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Therapeutic Color Psychology
+        // Therapeutic Color Psychology (Original)
         'calm-sage': '#A8B5A0',        // Nature, growth, safety
         'soft-lavender': '#C4B5D9',    // Calm, peace, spirituality
         'warm-terracotta': '#D4A89E',  // Grounding, warmth, comfort
@@ -16,6 +16,11 @@ const config: Config = {
         'cream': '#F5F3EE',            // Softness, safety, cleanliness
         'charcoal': '#2C3333',         // Stability, strength, protection
         'accent-coral': '#E88B7A',     // Hope, gentle energy, warmth
+        
+        // New Color System (MANAS360)
+        'wellness-slate': '#0A3A78',   // Primary blue
+        'wellness-text': '#1A1A1A',    // Main text
+        'wellness-muted': '#475569',   // Muted text
       },
       fontFamily: {
         serif: ['Crimson Pro', 'serif'],
@@ -98,6 +103,11 @@ const config: Config = {
         safe: 'max(1rem, env(safe-area-inset-bottom))',
       },
     },
+  },
+  plugins: [],
+};
+
+export default config;
   },
   plugins: [
     require('@tailwindcss/forms'),

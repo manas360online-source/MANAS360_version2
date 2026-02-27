@@ -406,6 +406,19 @@ For questions about the implementation:
 
 ---
 
+## 🧾 CBT Session Versioning
+
+New endpoints support template versioning and immutable session starts. Key behaviors:
+
+- Versions are stored in `cbt_session_versions` as immutable JSON snapshots with checksum.
+- Patient sessions store `templateVersionId` and `templateSnapshot` for immutable playback.
+- Duplicate a version: `POST /api/cbt-sessions/templates/:id/versions/:versionId/duplicate` (therapist)
+- Compare two versions: `GET /api/cbt-sessions/templates/:id/versions/compare?v1=1&v2=2` (therapist)
+- Start a session from a specific published version: `POST /api/cbt-sessions/start` with `{ templateId, versionId }`
+
+See therapist API docs for examples and request/response schemas.
+
+
 ## 📝 Changelog
 
 ### Version 1.0.0 (February 27, 2026)

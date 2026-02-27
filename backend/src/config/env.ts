@@ -61,6 +61,7 @@ export interface EnvConfig {
 	awsSecretAccessKey?: string;
 	profilePhotoSignedUrlTtlSeconds: number;
 	therapistDocumentSignedUrlTtlSeconds: number;
+	exportSignedUrlTtlSeconds: number;
 	sessionNotesEncryptionKey: string;
 }
 
@@ -89,6 +90,7 @@ export const env: EnvConfig = Object.freeze({
 	awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 	profilePhotoSignedUrlTtlSeconds: parseNumber(process.env.PROFILE_PHOTO_SIGNED_URL_TTL_SECONDS, 900),
 	therapistDocumentSignedUrlTtlSeconds: parseNumber(process.env.THERAPIST_DOCUMENT_SIGNED_URL_TTL_SECONDS, 900),
+	exportSignedUrlTtlSeconds: parseNumber(process.env.EXPORT_SIGNED_URL_TTL_SECONDS, 3600),
 	sessionNotesEncryptionKey: process.env.SESSION_NOTES_ENCRYPTION_KEY ?? '',
 });
 
