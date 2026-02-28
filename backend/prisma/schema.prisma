@@ -532,7 +532,6 @@ model Subscription {
 
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   plan     SubscriptionPlan @relation(fields: [planId], references: [id])
-  payments Payment[]
 
   @@index([userId])
   @@index([planId])
