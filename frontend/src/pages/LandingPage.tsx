@@ -118,6 +118,8 @@ export const LandingPage: React.FC = () => {
             serviceType: 'Mental Health Therapy',
           })}
         </script>
+        {/* Preload hero image for better LCP */}
+        <link rel="preload" as="image" href="/hero.jpg" />
       </Helmet>
 
       {/* Main Page Structure */}

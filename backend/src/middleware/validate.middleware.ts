@@ -149,7 +149,7 @@ export const validateChangePasswordRequest: RequestHandler[] = [
 ];
 
 export const validateSessionIdParam: RequestHandler[] = [
-	param('id').isMongoId().withMessage('id must be a valid ObjectId'),
+	param('id').isUUID().withMessage('id must be a valid UUID'),
 	(req, _res, next) => applyValidationResult(req, next),
 ];
 
@@ -326,7 +326,7 @@ const extractValidatedBookSessionPayload = (req: Request, _res: Response, next: 
 };
 
 export const validateBookSessionRequest: RequestHandler[] = [
-	body('therapistId').isMongoId().withMessage('therapistId must be a valid ObjectId'),
+	body('therapistId').isUUID().withMessage('therapistId must be a valid UUID'),
 	body('dateTime').isISO8601().withMessage('dateTime must be a valid ISO8601 date'),
 	body('dateTime').custom((value) => {
 		const date = new Date(String(value));
@@ -387,6 +387,11 @@ const extractValidatedTherapistSessionHistoryQuery = (req: Request, _res: Respon
 			typeof req.query.status === 'string'
 				? (req.query.status as 'pending' | 'confirmed' | 'cancelled' | 'completed')
 				: undefined,
+		patient: typeof req.query.patient === 'string' ? String(req.query.patient).trim() : undefined,
+		from: typeof req.query.from === 'string' ? String(req.query.from) : undefined,
+		to: typeof req.query.to === 'string' ? String(req.query.to) : undefined,
+		type: typeof req.query.type === 'string' ? String(req.query.type) : undefined,
+		completion: typeof req.query.completion === 'string' ? (req.query.completion as 'complete' | 'incomplete') : undefined,
 		page: pagination.page,
 		limit: pagination.limit,
 	};
@@ -396,6 +401,11 @@ const extractValidatedTherapistSessionHistoryQuery = (req: Request, _res: Respon
 
 export const validateTherapistSessionHistoryQuery: RequestHandler[] = [
 	query('status').optional().isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('status must be pending, confirmed, cancelled, or completed'),
+	query('patient').optional().isString().trim().isLength({ min: 1 }).withMessage('patient must be a string'),
+	query('from').optional().isISO8601().withMessage('from must be an ISO8601 date'),
+	query('to').optional().isISO8601().withMessage('to must be an ISO8601 date'),
+	query('type').optional().isString().trim().withMessage('type must be a string'),
+	query('completion').optional().isIn(['complete', 'incomplete']).withMessage('completion must be complete or incomplete'),
 	query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
 	query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('limit must be between 1 and 50'),
 	(req, _res, next) => applyValidationResult(req, next),
@@ -670,7 +680,7 @@ const extractValidatedAdminGetUserIdParam = (req: Request, _res: Response, next:
 };
 
 export const validateAdminGetUserIdParam: RequestHandler[] = [
-	param('id').isMongoId().withMessage('id must be a valid MongoDB ObjectId'),
+	param('id').isUUID().withMessage('id must be a valid UUID'),
 	(req, _res, next) => applyValidationResult(req, next),
 	extractValidatedAdminGetUserIdParam,
 ];
@@ -682,7 +692,7 @@ const extractValidatedTherapistProfileId = (req: Request, _res: Response, next: 
 };
 
 export const validateTherapistProfileIdParam: RequestHandler[] = [
-	param('id').isMongoId().withMessage('id must be a valid MongoDB ObjectId'),
+	param('id').isUUID().withMessage('id must be a valid UUID'),
 	(req, _res, next) => applyValidationResult(req, next),
 	extractValidatedTherapistProfileId,
 ];

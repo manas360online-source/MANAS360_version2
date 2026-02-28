@@ -1,0 +1,364 @@
+{
+  "aggregate": {
+    "counters": {
+      "vusers.created_by_name.patient-flow": 7918,
+      "vusers.created": 16650,
+      "errors.Error: xhr poll error": 16650,
+      "vusers.failed": 16650,
+      "vusers.created_by_name.reconnect-storm": 814,
+      "vusers.created_by_name.therapist-flow": 7918
+    },
+    "rates": {},
+    "firstCounterAt": 1772207757916,
+    "lastCounterAt": 1772207937711,
+    "firstMetricAt": 1772207757916,
+    "lastMetricAt": 1772207937711,
+    "period": 1772207930000,
+    "summaries": {},
+    "histograms": {}
+  },
+  "intermediate": [
+    {
+      "counters": {
+        "vusers.created_by_name.patient-flow": 6,
+        "vusers.created": 13,
+        "errors.Error: xhr poll error": 13,
+        "vusers.failed": 13,
+        "vusers.created_by_name.reconnect-storm": 1,
+        "vusers.created_by_name.therapist-flow": 6
+      },
+      "rates": {},
+      "firstCounterAt": 1772207757916,
+      "lastCounterAt": 1772207759969,
+      "firstMetricAt": 1772207757916,
+      "lastMetricAt": 1772207759969,
+      "period": "1772207750000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.patient-flow": 49,
+        "vusers.created": 107,
+        "errors.Error: xhr poll error": 107,
+        "vusers.failed": 107,
+        "vusers.created_by_name.reconnect-storm": 7,
+        "vusers.created_by_name.therapist-flow": 51
+      },
+      "rates": {},
+      "firstCounterAt": 1772207760018,
+      "lastCounterAt": 1772207769968,
+      "firstMetricAt": 1772207760018,
+      "lastMetricAt": 1772207769968,
+      "period": "1772207760000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.therapist-flow": 83,
+        "vusers.created": 183,
+        "errors.Error: xhr poll error": 182,
+        "vusers.failed": 182,
+        "vusers.created_by_name.patient-flow": 94,
+        "vusers.created_by_name.reconnect-storm": 6
+      },
+      "rates": {},
+      "firstCounterAt": 1772207770022,
+      "lastCounterAt": 1772207779997,
+      "firstMetricAt": 1772207770022,
+      "lastMetricAt": 1772207779997,
+      "period": "1772207770000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "errors.Error: xhr poll error": 259,
+        "vusers.failed": 259,
+        "vusers.created_by_name.therapist-flow": 131,
+        "vusers.created": 258,
+        "vusers.created_by_name.patient-flow": 111,
+        "vusers.created_by_name.reconnect-storm": 16
+      },
+      "rates": {},
+      "firstCounterAt": 1772207780001,
+      "lastCounterAt": 1772207789979,
+      "firstMetricAt": 1772207780001,
+      "lastMetricAt": 1772207789979,
+      "period": "1772207780000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.therapist-flow": 154,
+        "vusers.created": 337,
+        "errors.Error: xhr poll error": 335,
+        "vusers.failed": 335,
+        "vusers.created_by_name.reconnect-storm": 16,
+        "vusers.created_by_name.patient-flow": 167
+      },
+      "rates": {},
+      "firstCounterAt": 1772207790001,
+      "lastCounterAt": 1772207799998,
+      "firstMetricAt": 1772207790001,
+      "lastMetricAt": 1772207799998,
+      "period": "1772207790000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "errors.Error: xhr poll error": 412,
+        "vusers.failed": 412,
+        "vusers.created_by_name.patient-flow": 189,
+        "vusers.created": 411,
+        "vusers.created_by_name.therapist-flow": 200,
+        "vusers.created_by_name.reconnect-storm": 22
+      },
+      "rates": {},
+      "firstCounterAt": 1772207800000,
+      "lastCounterAt": 1772207809998,
+      "firstMetricAt": 1772207800000,
+      "lastMetricAt": 1772207809998,
+      "period": "1772207800000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "errors.Error: xhr poll error": 480,
+        "vusers.failed": 480,
+        "vusers.created_by_name.patient-flow": 215,
+        "vusers.created": 480,
+        "vusers.created_by_name.therapist-flow": 238,
+        "vusers.created_by_name.reconnect-storm": 27
+      },
+      "rates": {},
+      "firstCounterAt": 1772207810005,
+      "lastCounterAt": 1772207819999,
+      "firstMetricAt": 1772207810005,
+      "lastMetricAt": 1772207819999,
+      "period": "1772207810000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.patient-flow": 287,
+        "vusers.created": 589,
+        "errors.Error: xhr poll error": 590,
+        "vusers.failed": 590,
+        "vusers.created_by_name.reconnect-storm": 27,
+        "vusers.created_by_name.therapist-flow": 275
+      },
+      "rates": {},
+      "firstCounterAt": 1772207820003,
+      "lastCounterAt": 1772207829992,
+      "firstMetricAt": 1772207820003,
+      "lastMetricAt": 1772207829992,
+      "period": "1772207820000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.patient-flow": 351,
+        "vusers.created": 718,
+        "errors.Error: xhr poll error": 717,
+        "vusers.failed": 717,
+        "vusers.created_by_name.therapist-flow": 330,
+        "vusers.created_by_name.reconnect-storm": 37
+      },
+      "rates": {},
+      "firstCounterAt": 1772207830003,
+      "lastCounterAt": 1772207839997,
+      "firstMetricAt": 1772207830003,
+      "lastMetricAt": 1772207839997,
+      "period": "1772207830000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.therapist-flow": 400,
+        "vusers.created": 843,
+        "errors.Error: xhr poll error": 841,
+        "vusers.failed": 841,
+        "vusers.created_by_name.patient-flow": 401,
+        "vusers.created_by_name.reconnect-storm": 42
+      },
+      "rates": {},
+      "firstCounterAt": 1772207840000,
+      "lastCounterAt": 1772207849988,
+      "firstMetricAt": 1772207840000,
+      "lastMetricAt": 1772207849988,
+      "period": "1772207840000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.therapist-flow": 461,
+        "vusers.created": 969,
+        "errors.Error: xhr poll error": 971,
+        "vusers.failed": 971,
+        "vusers.created_by_name.patient-flow": 461,
+        "vusers.created_by_name.reconnect-storm": 47
+      },
+      "rates": {},
+      "firstCounterAt": 1772207850006,
+      "lastCounterAt": 1772207859999,
+      "firstMetricAt": 1772207850006,
+      "lastMetricAt": 1772207859999,
+      "period": "1772207850000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.therapist-flow": 524,
+        "vusers.created": 1091,
+        "errors.Error: xhr poll error": 1091,
+        "vusers.failed": 1091,
+        "vusers.created_by_name.patient-flow": 515,
+        "vusers.created_by_name.reconnect-storm": 52
+      },
+      "rates": {},
+      "firstCounterAt": 1772207860003,
+      "lastCounterAt": 1772207869997,
+      "firstMetricAt": 1772207860003,
+      "lastMetricAt": 1772207869997,
+      "period": "1772207860000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.patient-flow": 574,
+        "vusers.created": 1220,
+        "errors.Error: xhr poll error": 1221,
+        "vusers.failed": 1221,
+        "vusers.created_by_name.therapist-flow": 578,
+        "vusers.created_by_name.reconnect-storm": 68
+      },
+      "rates": {},
+      "firstCounterAt": 1772207870001,
+      "lastCounterAt": 1772207879992,
+      "firstMetricAt": 1772207870001,
+      "lastMetricAt": 1772207879992,
+      "period": "1772207870000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.therapist-flow": 603,
+        "vusers.created": 1344,
+        "errors.Error: xhr poll error": 1342,
+        "vusers.failed": 1342,
+        "vusers.created_by_name.patient-flow": 675,
+        "vusers.created_by_name.reconnect-storm": 66
+      },
+      "rates": {},
+      "firstCounterAt": 1772207880007,
+      "lastCounterAt": 1772207889999,
+      "firstMetricAt": 1772207880007,
+      "lastMetricAt": 1772207889999,
+      "period": "1772207880000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "errors.Error: xhr poll error": 1470,
+        "vusers.failed": 1470,
+        "vusers.created_by_name.therapist-flow": 711,
+        "vusers.created": 1468,
+        "vusers.created_by_name.patient-flow": 666,
+        "vusers.created_by_name.reconnect-storm": 91
+      },
+      "rates": {},
+      "firstCounterAt": 1772207890001,
+      "lastCounterAt": 1772207899998,
+      "firstMetricAt": 1772207890001,
+      "lastMetricAt": 1772207899998,
+      "period": "1772207890000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.patient-flow": 774,
+        "vusers.created": 1596,
+        "errors.Error: xhr poll error": 1596,
+        "vusers.failed": 1596,
+        "vusers.created_by_name.therapist-flow": 750,
+        "vusers.created_by_name.reconnect-storm": 72
+      },
+      "rates": {},
+      "firstCounterAt": 1772207900013,
+      "lastCounterAt": 1772207909995,
+      "firstMetricAt": 1772207900013,
+      "lastMetricAt": 1772207909995,
+      "period": "1772207900000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.patient-flow": 807,
+        "vusers.created": 1722,
+        "errors.Error: xhr poll error": 1722,
+        "vusers.failed": 1722,
+        "vusers.created_by_name.therapist-flow": 843,
+        "vusers.created_by_name.reconnect-storm": 72
+      },
+      "rates": {},
+      "firstCounterAt": 1772207910002,
+      "lastCounterAt": 1772207919998,
+      "firstMetricAt": 1772207910002,
+      "lastMetricAt": 1772207919998,
+      "period": "1772207910000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.therapist-flow": 883,
+        "vusers.created": 1845,
+        "errors.Error: xhr poll error": 1845,
+        "vusers.failed": 1845,
+        "vusers.created_by_name.reconnect-storm": 79,
+        "vusers.created_by_name.patient-flow": 883
+      },
+      "rates": {},
+      "firstCounterAt": 1772207920011,
+      "lastCounterAt": 1772207929996,
+      "firstMetricAt": 1772207920011,
+      "lastMetricAt": 1772207929996,
+      "period": "1772207920000",
+      "summaries": {},
+      "histograms": {}
+    },
+    {
+      "counters": {
+        "vusers.created_by_name.therapist-flow": 697,
+        "vusers.created": 1456,
+        "errors.Error: xhr poll error": 1456,
+        "vusers.failed": 1456,
+        "vusers.created_by_name.patient-flow": 693,
+        "vusers.created_by_name.reconnect-storm": 66
+      },
+      "rates": {},
+      "firstCounterAt": 1772207930002,
+      "lastCounterAt": 1772207937711,
+      "firstMetricAt": 1772207930002,
+      "lastMetricAt": 1772207937711,
+      "period": "1772207930000",
+      "summaries": {},
+      "histograms": {}
+    }
+  ]
+}

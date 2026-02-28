@@ -1,8 +1,77 @@
 # Manas360 Backend
 
+**Tech Stack**
+
+- **Backend:** Node.js, TypeScript, Express, Prisma (PostgreSQL), PostgreSQL, Redis, BullMQ (background jobs), Socket.io, AWS S3 SDK for exports.
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, @tanstack/react-query, Recharts, react-window, react-virtualized-auto-sizer.
+- **Dev & Tooling:** ESLint, Prettier, Jest (backend tests), Vitest (frontend), TypeScript, ts-node-dev for local dev.
+
+**Run Locally (quickstart)**
+
+Prerequisites: Node 18+, npm (or yarn), Docker (optional, for Postgres/Redis), and access to required environment variables (see `.env.example`).
+
+- Start Postgres and Redis (Docker examples):
+
+	```bash
+	docker run -d --name manas-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=manas -p 5432:5432 postgres:15
+	docker run -d --name manas-redis -p 6379:6379 redis:7
+	```
+
+- Backend (development):
+
+	```bash
+	cd backend
+	cp .env.example .env
+	npm install
+	npx prisma generate
+	npx prisma migrate dev --name init
+	npm run dev
+	```
+
+	Notes:
+	- Required env vars include `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, AWS S3 credentials for export uploads, and other values in `.env.example`.
+	- Background workers (export processing, rollups) are instantiated by the backend when it starts; no separate process is required in development.
+
+- Frontend (development):
+
+	```bash
+	cd frontend
+	cp .env.example .env
+	npm install
+	npm run dev
+	```
+
+- Run tests:
+
+	```bash
+	# Backend tests
+	cd backend
+	npm test
+
+	# Frontend typecheck / tests
+	cd frontend
+	npm run typecheck
+	npm test
+	```
+
+**Useful commands**
+
+- `npm run dev` (backend) — run development server with automatic reload.
+- `npm run build` (backend) — compile TypeScript to `dist/`.
+- `npm run dev` (frontend) — start Vite dev server.
+- `npx prisma migrate dev` — run Prisma migrations (development).
+
+**Troubleshooting**
+
+- If database/connectivity errors appear, verify `DATABASE_URL` and `REDIS_URL` and that Postgres/Redis are reachable.
+- If Prisma schema changed, run `npx prisma generate` and `npx prisma migrate dev` before starting backend.
+- If exports fail, ensure AWS S3 credentials are present and that `REDIS_URL` is configured for the queue.
+
+---
+
 ## Authentication System (User Story 2.1)
 
-Production-ready authentication has been initialized using Node.js, Express, MongoDB (Mongoose), JWT, and secure middleware patterns.
+Production-ready authentication has been initialized using Node.js, Express, PostgreSQL (Prisma), JWT, and secure middleware patterns.
 
 ### Implemented Scope
 
@@ -128,7 +197,7 @@ Validation error (`422`):
 | `/api/v1/users/me/photo` | POST (multipart/form-data) | Yes | form-data: `photo` file | `photo` required, type: `jpg/jpeg/png`, max size `5MB` | `200` `{ "success": true, "message": "Profile photo updated", "data": { "profileImageUrl": "https://...", "signedProfileImageUrl": "https://..." } }` | `400` file missing/size/type invalid, `502` storage unavailable, `401/404/410` |
 | `/api/v1/users/me/password` | PATCH | Yes | `{ "currentPassword": string, "newPassword": string, "confirmPassword": string }` | required fields, `newPassword` min 8 + number + special char, `confirmPassword === newPassword`, current password must match | `200` `{ "success": true, "message": "Password updated successfully", "data": null }` | `400` weak/invalid payload, `401` current password invalid, `422` validation failed, `401/404/410` |
 | `/api/v1/users/me/sessions` | GET | Yes | None | N/A (rate limited) | `200` `{ "success": true, "message": "Active sessions fetched", "data": [{ "id": "...", "device": "MacBook", "ipAddress": "203.0.113.5", "createdAt": "...", "lastActiveAt": "...", "isCurrent": true }] }` | `429` too many requests, `401/404/410` |
-| `/api/v1/users/me/sessions/:id` | DELETE | Yes | None | `id` must be valid Mongo ObjectId (rate limited) | `200` `{ "success": true, "message": "Session invalidated successfully", "data": null }` | `404` session not found, `422` invalid ObjectId, `429`, `401/404/410` |
+| `/api/v1/users/me/sessions/:id` | DELETE | Yes | None | `id` must be a valid session id (cuid/UUID) (rate limited) | `200` `{ "success": true, "message": "Session invalidated successfully", "data": null }` | `404` session not found, `422` invalid id, `429`, `401/404/410` |
 | `/api/v1/users/me` | DELETE | Yes | None | N/A | `200` `{ "success": true, "message": "Account deleted", "data": null }` | `401` auth required, `404` user not found |
 
 ---

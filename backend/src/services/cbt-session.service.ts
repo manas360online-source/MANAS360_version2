@@ -1,5 +1,8 @@
 import { prisma } from '../config/db';
 import BranchingEngine from '../lib/branching/engine';
+import { refreshAnalyticsMaterializedViews } from '../jobs/analyticsRollup.job';
+import { scheduleAnalyticsRefresh } from '../jobs/analyticsRollupQueue';
+import { analyticsService } from './analytics.service';
 
 // Prisma-generated types are not available in this workspace snapshot.
 // Provide lightweight aliases so TypeScript can compile while we continue
@@ -508,7 +511,7 @@ export class CBTSessionService {
 
     // determine which version to use: explicit versionId (templateVersionId) preferred,
     // otherwise use latest published version for this template
-    let versionRecord = null;
+    let versionRecord: any = null;
     if (versionId) {
       versionRecord = await prisma.cBTSessionVersion.findUnique({ where: { id: versionId } });
       if (!versionRecord) throw new Error('Requested template version not found');
@@ -678,6 +681,18 @@ export class CBTSessionService {
       data: updateData,
     });
 
+    // If the session just completed, trigger an incremental refresh of the analytics
+    // materialized view so dashboard queries reflect the new session soon.
+    if (sessionComplete) {
+      // fire-and-forget; don't block the response path
+      // invalidate Redis cache for the therapist so dashboards read fresh data
+      try {
+        const therapistId = session.template?.therapistId || null;
+        if (therapistId) void analyticsService.invalidateCacheForTherapist(therapistId);
+      } catch (e) {}
+      // schedule a debounced rollup rather than refreshing immediately on every session
+      void scheduleAnalyticsRefresh();
+    }
     const nextQuestion = questions[nextQuestionIndex] || null;
 
     return {

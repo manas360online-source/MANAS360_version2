@@ -36,6 +36,22 @@ export class SessionExportService {
 
     if (!session) throw new Error('Session not found');
 
+    // Prevent exporting incomplete sessions
+    if (!session.completedAt) {
+      throw new Error('Cannot export session before it is completed');
+    }
+
+    // Resolve requestor (therapist) name for metadata if provided
+    let requestorName = '';
+    if (options?.requestorId) {
+      try {
+        const user = await prisma.user.findUnique({ where: { id: options.requestorId }, select: { firstName: true, lastName: true } });
+        if (user) requestorName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      } catch (e) {
+        // ignore lookup failures
+      }
+    }
+
     const doc = new PDFDocument({ margin: 50 });
     const fileName = `session-${sessionId}-${Date.now()}.pdf`;
     const filePath = options?.outputPath || join(process.cwd(), 'exports', fileName);
@@ -45,6 +61,12 @@ export class SessionExportService {
     // Header
     doc.fontSize(24).font('Helvetica-Bold').text('CBT Session Report', { align: 'center' });
     doc.fontSize(10).fillColor('#666').text('Confidential - For Clinical Use Only', { align: 'center' });
+    doc.moveDown(0.5);
+    // Metadata: therapist, patient, date, version
+    doc.fontSize(10).fillColor('#333').font('Helvetica').text(`Therapist: ${requestorName || '—'}`);
+    doc.text(`Patient: ${session.patient.firstName} ${session.patient.lastName}`);
+    doc.text(`Session Date: ${session.completedAt?.toLocaleString()}`);
+    doc.text(`Template Version: ${session.templateVersion}`);
     doc.moveDown();
 
     // Patient Info
@@ -159,12 +181,28 @@ export class SessionExportService {
 
     if (!session) throw new Error('Session not found');
 
+    // Prevent exporting incomplete sessions
+    if (!session.completedAt) {
+      throw new Error('Cannot export session before it is completed');
+    }
+
+    // Resolve requestor (therapist) name for metadata if provided
+    let requestorName = '';
+    if (options?.requestorId) {
+      try {
+        const user = await prisma.user.findUnique({ where: { id: options.requestorId }, select: { firstName: true, lastName: true } });
+        if (user) requestorName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+      } catch (e) {
+        // ignore lookup failures
+      }
+    }
+
     const fileName = `session-${sessionId}-${Date.now()}.csv`;
     const filePath = options?.outputPath || join(process.cwd(), 'exports', fileName);
 
     const ws = createWriteStream(filePath);
 
-    // Header row
+    // Header rows / metadata
     const headers = [
       'Patient Name',
       'Patient Email',
@@ -195,13 +233,21 @@ export class SessionExportService {
       session.status,
     ]);
 
-    const csvWriter = csv.format({ headers: true });
+    const csvWriter = csv.format({ headers: false });
     csvWriter.pipe(ws);
 
+    // Write metadata rows first
+    csvWriter.write(['Exported By', requestorName || '']);
+    csvWriter.write(['Patient Name', `${session.patient.firstName} ${session.patient.lastName}`]);
+    csvWriter.write(['Patient Email', session.patient.email]);
+    csvWriter.write(['Session ID', session.id]);
+    csvWriter.write(['Template Version', session.templateVersion?.toString() || '']);
+    csvWriter.write(['Exported At', new Date().toISOString()]);
+    csvWriter.write([]);
+
+    // Write header row
     csvWriter.write(headers);
-    rows.forEach((row: any) => {
-      csvWriter.write(row);
-    });
+    rows.forEach((row: any) => csvWriter.write(row));
     csvWriter.end();
 
     // Create export log and optionally upload

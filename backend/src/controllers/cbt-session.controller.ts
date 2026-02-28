@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { cbtSessionService } from '../services/cbt-session.service';
+import { prisma } from '../config/db';
 
 // Prisma enum/type shims - runtime validation is lightweight here.
 type QuestionType = string;

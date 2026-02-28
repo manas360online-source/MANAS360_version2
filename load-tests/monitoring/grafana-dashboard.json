@@ -1,0 +1,21 @@
+{
+  "annotations": {"list":[]},
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Message Latency (p50/p90/p99)",
+      "targets": [
+        {"expr":"histogram_quantile(0.5, sum(rate(app_message_latency_seconds_bucket[5m])) by (le))","refId":"A"},
+        {"expr":"histogram_quantile(0.9, sum(rate(app_message_latency_seconds_bucket[5m])) by (le))","refId":"B"},
+        {"expr":"histogram_quantile(0.99, sum(rate(app_message_latency_seconds_bucket[5m])) by (le))","refId":"C"}
+      ]
+    },
+    {"type":"graph","title":"Active WS Connections","targets":[{"expr":"sum(app_ws_active_connections) by (instance)","refId":"A"}]},
+    {"type":"graph","title":"Messages/sec","targets":[{"expr":"rate(socket_stream_processed_total[1m])","refId":"A"}]},
+    {"type":"graph","title":"Redis Memory","targets":[{"expr":"redis_memory_used_bytes","refId":"A"}]},
+    {"type":"graph","title":"Event Loop Lag","targets":[{"expr":"nodejs_eventloop_lag_seconds","refId":"A"}]}
+  ],
+  "schemaVersion": 16,
+  "title": "MANAS360 Realtime Overview",
+  "version": 1
+}

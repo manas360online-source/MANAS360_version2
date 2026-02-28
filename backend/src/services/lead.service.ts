@@ -34,7 +34,7 @@ const assertTherapistUser = async (userId: string): Promise<void> => {
 export const getMyTherapistLeads = async (userId: string, query: TherapistLeadsQuery) => {
 	await assertTherapistUser(userId);
 
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean();
+	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select({ _id: 1 }).lean();
 	if (!therapistProfile) {
 		throw new AppError('Therapist profile not found. Please create profile first.', 404);
 	}
@@ -57,7 +57,7 @@ export const getMyTherapistLeads = async (userId: string, query: TherapistLeadsQ
 
 	const [totalItems, leads] = await Promise.all([
 		TherapistLeadModel.countDocuments(filter),
-		TherapistLeadModel.find(filter)
+		((TherapistLeadModel.find(filter)
 			.select({
 				patientId: 1,
 				issueType: 1,
@@ -69,22 +69,19 @@ export const getMyTherapistLeads = async (userId: string, query: TherapistLeadsQ
 			})
 			.sort({ matchedAt: -1 })
 			.skip(pagination.skip)
-			.limit(pagination.limit)
-			.lean(),
+			.limit(pagination.limit)) as any).lean(),
 	]);
 
-	const patientIds = [...new Set(leads.map((lead) => String(lead.patientId)))];
+	const patientIds = [...new Set((leads as any).map((lead: any) => String(lead.patientId)))];
 
-	const patientProfiles = await PatientProfileModel.find({
+	const patientProfiles = (await (PatientProfileModel.find({
 		_id: { $in: patientIds },
-	})
-		.select({ _id: 1, age: 1, gender: 1 })
-		.lean();
+	}).select({ _id: 1, age: 1, gender: 1 }) as any).lean()) as any;
 
-	const patientMap = new Map(patientProfiles.map((profile) => [String(profile._id), profile]));
+	const patientMap: Map<string, any> = new Map((patientProfiles as any).map((profile: any) => [String(profile._id), profile]));
 
-	const items = leads.map((lead) => {
-		const patientProfile = patientMap.get(String(lead.patientId));
+	const items = (leads as any).map((lead: any) => {
+		const patientProfile = patientMap.get(String(lead.patientId)) as any;
 
 		return {
 			leadId: String(lead._id),
@@ -111,7 +108,7 @@ export const getMyTherapistLeads = async (userId: string, query: TherapistLeadsQ
 export const purchaseMyTherapistLead = async (userId: string, leadId: string) => {
 	await assertTherapistUser(userId);
 
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean();
+	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select({ _id: 1 }).lean();
 	if (!therapistProfile) {
 		throw new AppError('Therapist profile not found. Please create profile first.', 404);
 	}

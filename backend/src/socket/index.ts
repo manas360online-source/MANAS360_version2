@@ -45,6 +45,14 @@ export async function initSocket(server: http.Server) {
   const streamErrors = new client.Counter({ name: 'socket_stream_errors_total', help: 'Stream processing errors' });
   const pendingDbGauge = new client.Gauge({ name: 'socket_pending_db_rows', help: 'Number of DB pending delivery rows' });
   const rateLimitRejected = new client.Counter({ name: 'socket_rate_limit_rejected_total', help: 'Rate limit rejections' });
+  const messageLatency = new client.Histogram({
+    name: 'app_message_latency_seconds',
+    help: 'End-to-end message processing latency (seconds)',
+    labelNames: ['instance', 'role'],
+    buckets: [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2]
+  });
+  const activeConnections = new client.Gauge({ name: 'app_ws_active_connections', help: 'Active websocket connections', labelNames: ['instance'] });
+  const droppedConnections = new client.Counter({ name: 'app_ws_dropped_connections_total', help: 'Dropped websocket connections', labelNames: ['instance', 'reason'] });
 
   // background flag to stop consumer on shutdown
   let shuttingDown = false;
@@ -114,8 +122,10 @@ export async function initSocket(server: http.Server) {
       const payload = jwt.verify(token, env.jwtAccessSecret) as JwtPayload;
       // attach minimal user info to socket
       socket.data.user = { id: payload.sub, role: payload.role, raw: payload };
+      console.info('socket.auth_success', { userId: payload.sub, role: payload.role, socketId: socket.id });
       return next();
     } catch (err) {
+      console.warn('socket.auth_failed', { err: String(err), socketId: socket.id });
       return next(new Error('Authentication error'));
     }
   });
@@ -163,6 +173,9 @@ export async function initSocket(server: http.Server) {
 
   io.on('connection', (socket) => {
     const user = socket.data.user;
+    // increment active connections
+    try { activeConnections.labels(os.hostname()).inc(); } catch (e) {}
+    console.info('socket.connect', { socketId: socket.id, userId: user?.id, role: user?.role });
 
     socket.on('join_session', async (payload: { sessionId: string }) => {
       if (!(await (socket as any).allowEvent(1))) return socket.emit('error', { code: 'RATE_LIMIT' });
@@ -191,6 +204,7 @@ export async function initSocket(server: http.Server) {
 
     // example: patient submits answer -> server persists and notifies therapist
     socket.on('answer_submitted', async (data: { sessionId: string; questionId: string; answer: any; messageId?: string }) => {
+      const start = Date.now();
       if (!(await (socket as any).allowEvent(1))) return socket.emit('error', { code: 'RATE_LIMIT' });
       const { sessionId, questionId, answer } = data;
       let { messageId } = data as { messageId?: string };
@@ -255,6 +269,11 @@ export async function initSocket(server: http.Server) {
         // Immediate local emit for low-latency feedback; cross-node delivery guaranteed by stream consumer
         socket.to(sessionId).emit('answer_received', payload);
         socket.emit('answer_ack', { messageId, questionId, status: 'ACCEPTED', pendingDelivery: !addedToStream });
+        // observe latency
+        try {
+          const seconds = (Date.now() - start) / 1000;
+          messageLatency.labels(os.hostname(), user?.role || 'unknown').observe(seconds);
+        } catch (e) {}
       } catch (err) {
         socket.emit('error', { code: 'SERVER_ERROR', message: String(err) });
       }
@@ -277,6 +296,11 @@ export async function initSocket(server: http.Server) {
 
     socket.on('disconnecting', () => {
       // optionally emit presence changes after disconnect
+    });
+    socket.on('disconnect', (reason) => {
+      try { activeConnections.labels(os.hostname()).dec(); } catch (e) {}
+      try { droppedConnections.labels(os.hostname(), String(reason)).inc(); } catch (e) {}
+      console.info('socket.disconnect', { socketId: socket.id, reason });
     });
   });
   // Consumer loop: read from stream using XREADGROUP and deliver events
@@ -384,12 +408,12 @@ export async function initSocket(server: http.Server) {
               // remove stale members
               const staleMax = now - PRESENCE_TTL_MS;
               // get members with score less than staleMax
-              const stale = await pubClient.sendCommand(['ZRANGEBYSCORE', key, '-inf', String(staleMax)]);
+              const stale = (await pubClient.sendCommand(['ZRANGEBYSCORE', key, '-inf', String(staleMax)])) as any[];
               if (stale && stale.length > 0) {
                 // remove them
-                await pubClient.sendCommand(['ZREM', key, ...stale]);
+                await pubClient.sendCommand(['ZREM', key, ...stale as any[]]);
                 // recompute current online users and publish update
-                const remaining = await pubClient.sendCommand(['ZRANGE', key, '0', '-1']);
+                const remaining = (await pubClient.sendCommand(['ZRANGE', key, '0', '-1'])) as any[];
                 const onlineUsers = {} as Record<string, { userId: string; role: string; clientCount: number }>;
                 for (const mem of remaining) {
                   const parts = mem.split(':');

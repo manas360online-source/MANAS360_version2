@@ -1,0 +1,8 @@
+{
+  "name": "manas360-load-tests-artillery",
+  "version": "0.1.0",
+  "private": true,
+  "devDependencies": {
+    "artillery": "^2.0.0-28"
+  }
+}

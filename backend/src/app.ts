@@ -20,7 +20,7 @@ app.use(env.apiPrefix, apiRoutes);
 
 // Prometheus metrics endpoint
 const collectDefaultMetrics = client.collectDefaultMetrics;
-collectDefaultMetrics({ timeout: 5000 });
+collectDefaultMetrics({ timeout: 5000 } as any);
 app.get('/metrics', async (_req, res) => {
 	try {
 		const metrics = await client.register.metrics();

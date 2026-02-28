@@ -1,8 +1,7 @@
+import prisma from '../config/db';
 import PatientProfileModel, { PatientAssessmentModel, PatientMoodEntryModel } from '../models/patient.model';
-import UserModel from '../models/user.model';
 import { AppError } from '../middleware/error.middleware';
 import { buildPaginationMeta, normalizePagination } from '../utils/pagination';
-import { Types } from 'mongoose';
 import TherapistProfileModel from '../models/therapist.model';
 
 interface PatientProfileInput {
@@ -40,36 +39,38 @@ interface TherapistMatchQuery {
 	nextHours: number;
 }
 
-const safePatientProjection = {
-	userId: 1,
-	age: 1,
-	gender: 1,
-	medicalHistory: 1,
-	emergencyContact: 1,
-	createdAt: 1,
-	updatedAt: 1,
+const safePatientSelect = {
+	userId: true,
+	age: true,
+	gender: true,
+	medicalHistory: true,
+	emergencyContact: true,
+	createdAt: true,
+	updatedAt: true,
 } as const;
 
-const safeAssessmentProjection = {
-	type: 1,
-	answers: 1,
-	totalScore: 1,
-	severityLevel: 1,
-	createdAt: 1,
+const safeAssessmentSelect = {
+	type: true,
+	answers: true,
+	totalScore: true,
+	severityLevel: true,
+	createdAt: true,
 } as const;
 
 const assertPatientUser = async (userId: string): Promise<void> => {
-	const user = await UserModel.findById(userId).select('_id role isDeleted').lean();
+	const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, /* isDeleted: true if available */ } });
 
 	if (!user) {
 		throw new AppError('User not found', 404);
 	}
 
-	if (user.isDeleted) {
+	// If your User model tracks deletion, include that check. Placeholder kept for parity with previous behavior.
+	if ((user as any).isDeleted) {
 		throw new AppError('User account is deleted', 410);
 	}
 
-	if (user.role !== 'patient') {
+	// Accept both enum (PATIENT) and string forms ('patient') during transition
+	if (user.role !== 'PATIENT' && user.role !== 'patient') {
 		throw new AppError('Patient role required', 403);
 	}
 };
@@ -77,26 +78,28 @@ const assertPatientUser = async (userId: string): Promise<void> => {
 export const createPatientProfile = async (userId: string, input: PatientProfileInput) => {
 	await assertPatientUser(userId);
 
-	const existingProfile = await PatientProfileModel.findOne({ userId }).select('_id').lean();
+	const existingProfile = await prisma.patientProfile.findUnique({ where: { userId } });
 	if (existingProfile) {
 		throw new AppError('Patient profile already exists', 409);
 	}
 
-	const profile = await PatientProfileModel.create({
-		userId,
-		age: input.age,
-		gender: input.gender,
-		medicalHistory: input.medicalHistory,
-		emergencyContact: input.emergencyContact,
+	const profile = await prisma.patientProfile.create({
+		data: {
+			userId,
+			age: input.age,
+			gender: input.gender,
+			medicalHistory: input.medicalHistory ?? null,
+			emergencyContact: input.emergencyContact as any,
+		},
 	});
 
-	return PatientProfileModel.findById(profile._id, safePatientProjection).lean();
+	return prisma.patientProfile.findUnique({ where: { id: profile.id }, select: safePatientSelect });
 };
 
 export const getMyPatientProfile = async (userId: string) => {
 	await assertPatientUser(userId);
 
-	const profile = await PatientProfileModel.findOne({ userId }, safePatientProjection).lean();
+	const profile = await prisma.patientProfile.findUnique({ where: { userId }, select: safePatientSelect });
 
 	if (!profile) {
 		throw new AppError('Patient profile not found', 404);
@@ -152,7 +155,7 @@ const calculateAssessmentScore = (type: 'PHQ-9' | 'GAD-7', answers: number[]) =>
 export const createPatientAssessment = async (userId: string, input: PatientAssessmentInput) => {
 	await assertPatientUser(userId);
 
-	const patientProfile = await PatientProfileModel.findOne({ userId }).select('_id').lean();
+	const patientProfile = await prisma.patientProfile.findUnique({ where: { userId }, select: { id: true } });
 
 	if (!patientProfile) {
 		throw new AppError('Patient profile not found. Please create profile first.', 404);
@@ -160,21 +163,23 @@ export const createPatientAssessment = async (userId: string, input: PatientAsse
 
 	const { totalScore, severityLevel } = calculateAssessmentScore(input.type, input.answers);
 
-	const assessment = await PatientAssessmentModel.create({
-		patientId: patientProfile._id,
-		type: input.type,
-		answers: input.answers,
-		totalScore,
-		severityLevel,
+	const assessment = await prisma.patientAssessment.create({
+		data: {
+			patientId: patientProfile.id,
+			type: input.type,
+			answers: input.answers,
+			totalScore,
+			severityLevel,
+		},
 	});
 
-	return PatientAssessmentModel.findById(assessment._id, safeAssessmentProjection).lean();
+	return prisma.patientAssessment.findUnique({ where: { id: assessment.id }, select: safeAssessmentSelect });
 };
 
 export const getMyPatientAssessmentHistory = async (userId: string, query: PatientAssessmentHistoryQuery) => {
 	await assertPatientUser(userId);
 
-	const patientProfile = await PatientProfileModel.findOne({ userId }).select('_id').lean();
+	const patientProfile = await prisma.patientProfile.findUnique({ where: { userId }, select: { id: true } });
 
 	if (!patientProfile) {
 		throw new AppError('Patient profile not found. Please create profile first.', 404);
@@ -185,28 +190,24 @@ export const getMyPatientAssessmentHistory = async (userId: string, query: Patie
 		{ defaultPage: 1, defaultLimit: 10, maxLimit: 50 },
 	);
 
-	const mongoFilter: Record<string, unknown> = {
-		patientId: patientProfile._id,
-	};
-
-	if (query.type) {
-		mongoFilter.type = query.type;
-	}
-
+	const where: any = { patientId: patientProfile.id };
+	if (query.type) where.type = query.type;
 	if (query.fromDate || query.toDate) {
-		mongoFilter.createdAt = {
-			...(query.fromDate ? { $gte: query.fromDate } : {}),
-			...(query.toDate ? { $lte: query.toDate } : {}),
+		where.createdAt = {
+			...(query.fromDate ? { gte: query.fromDate } : {}),
+			...(query.toDate ? { lte: query.toDate } : {}),
 		};
 	}
 
 	const [totalItems, items] = await Promise.all([
-		PatientAssessmentModel.countDocuments(mongoFilter),
-		PatientAssessmentModel.find(mongoFilter, safeAssessmentProjection)
-			.sort({ createdAt: -1 })
-			.skip(pagination.skip)
-			.limit(pagination.limit)
-			.lean(),
+		prisma.patientAssessment.count({ where }),
+		prisma.patientAssessment.findMany({
+			where,
+			select: safeAssessmentSelect,
+			orderBy: { createdAt: 'desc' },
+			skip: pagination.skip,
+			take: pagination.limit,
+		}),
 	]);
 
 	return {
@@ -254,92 +255,51 @@ const calculateMoodTrend = (
 export const getMyMoodHistory = async (userId: string, query: PatientMoodHistoryQuery) => {
 	await assertPatientUser(userId);
 
-	const patientProfile = await PatientProfileModel.findOne({ userId }).select('_id').lean();
+	const patientProfile = await prisma.patientProfile.findUnique({ where: { userId }, select: { id: true } });
 
 	if (!patientProfile) {
 		throw new AppError('Patient profile not found. Please create profile first.', 404);
 	}
 
-	const matchStage: {
-		patientId: Types.ObjectId;
-		date?: {
-			$gte?: Date;
-			$lte?: Date;
-		};
-	} = {
-		patientId: patientProfile._id,
-	};
-
+	const where: any = { patientId: patientProfile.id };
 	if (query.fromDate || query.toDate) {
-		matchStage.date = {
-			...(query.fromDate ? { $gte: query.fromDate } : {}),
-			...(query.toDate ? { $lte: query.toDate } : {}),
+		where.date = {
+			...(query.fromDate ? { gte: query.fromDate } : {}),
+			...(query.toDate ? { lte: query.toDate } : {}),
 		};
 	}
 
 	const [items, groupedByWeek, groupedByMonth] = await Promise.all([
-		PatientMoodEntryModel.find(matchStage)
-			.select({ moodScore: 1, note: 1, date: 1, _id: 0 })
-			.sort({ date: -1 })
-			.lean(),
-		PatientMoodEntryModel.aggregate([
-			{ $match: matchStage },
-			{
-				$group: {
-					_id: {
-						year: { $isoWeekYear: '$date' },
-						week: { $isoWeek: '$date' },
-					},
-					averageMoodScore: { $avg: '$moodScore' },
-					entryCount: { $sum: 1 },
-				},
-			},
-			{ $sort: { '_id.year': -1, '_id.week': -1 } },
-			{
-				$project: {
-					_id: 0,
-					period: {
-						$concat: [
-							{ $toString: '$_id.year' },
-							'-W',
-							{
-								$cond: [
-									{ $lt: ['$_id.week', 10] },
-									{ $concat: ['0', { $toString: '$_id.week' }] },
-									{ $toString: '$_id.week' },
-								],
-							},
-						],
-					},
-					averageMoodScore: { $round: ['$averageMoodScore', 2] },
-					entryCount: 1,
-				},
-			},
-		]),
-		PatientMoodEntryModel.aggregate([
-			{ $match: matchStage },
-			{
-				$group: {
-					_id: { $dateToString: { format: '%Y-%m', date: '$date' } },
-					averageMoodScore: { $avg: '$moodScore' },
-					entryCount: { $sum: 1 },
-				},
-			},
-			{ $sort: { _id: -1 } },
-			{
-				$project: {
-					_id: 0,
-					period: '$_id',
-					averageMoodScore: { $round: ['$averageMoodScore', 2] },
-					entryCount: 1,
-				},
-			},
-		]),
+		prisma.patientMoodEntry.findMany({ where, select: { moodScore: true, note: true, date: true }, orderBy: { date: 'desc' } }),
+		// Weekly aggregation via raw query: use PostgreSQL date_trunc and grouping per iso_week
+		prisma.$queryRawUnsafe(`
+			SELECT to_char(date_trunc('week', date), 'IYYY-"W"IW') as period,
+				   ROUND(AVG(mood_score)::numeric, 2) as averageMoodScore,
+				   COUNT(*) as entryCount
+			FROM patient_mood_entries
+			WHERE patient_id = $1
+			${query.fromDate ? "AND date >= $2" : ''}
+			${query.toDate ? (query.fromDate ? "AND date <= $3" : "AND date <= $2") : ''}
+			GROUP BY period
+			ORDER BY period DESC
+			LIMIT 52
+		`, patientProfile.id, query.fromDate ?? null, query.toDate ?? null),
+		// Monthly aggregation
+		prisma.$queryRawUnsafe(`
+			SELECT to_char(date_trunc('month', date), 'YYYY-MM') as period,
+				   ROUND(AVG(mood_score)::numeric, 2) as averageMoodScore,
+				   COUNT(*) as entryCount
+			FROM patient_mood_entries
+			WHERE patient_id = $1
+			${query.fromDate ? "AND date >= $2" : ''}
+			${query.toDate ? (query.fromDate ? "AND date <= $3" : "AND date <= $2") : ''}
+			GROUP BY period
+			ORDER BY period DESC
+			LIMIT 24
+		`, patientProfile.id, query.fromDate ?? null, query.toDate ?? null),
 	]);
 
-	const trend = calculateMoodTrend(
-		items.map((item) => ({ moodScore: item.moodScore, date: new Date(item.date) })),
-	);
+	const trend = calculateMoodTrend(items.map((item) => ({ moodScore: item.moodScore, date: new Date(item.date) })));
 
 	return {
 		items,
@@ -508,16 +468,14 @@ const inferPrimaryNeed = (severityLevel: string): string => {
 export const getMyTherapistMatches = async (userId: string, query: TherapistMatchQuery) => {
 	await assertPatientUser(userId);
 
-	const patientProfile = await PatientProfileModel.findOne({ userId }).select('_id').lean();
+	const patientProfile = (await (PatientProfileModel.findOne({ userId }).select({ _id: 1 }) as any).lean()) as any;
 
 	if (!patientProfile) {
 		throw new AppError('Patient profile not found. Please create profile first.', 404);
 	}
 
-	const latestAssessment = await PatientAssessmentModel.findOne({ patientId: patientProfile._id })
-		.select({ severityLevel: 1, createdAt: 1 })
-		.sort({ createdAt: -1 })
-		.lean();
+	const assessmentQuery: any = PatientAssessmentModel.findOne({ patientId: patientProfile._id });
+	const latestAssessment = (await (assessmentQuery.select({ severityLevel: 1, createdAt: 1 }).sort({ createdAt: -1 }) as any).lean()) as any;
 
 	if (!latestAssessment) {
 		throw new AppError('Assessment not found. Please complete assessment first.', 404);

@@ -1,0 +1,85 @@
+config:
+  target: "http://localhost:4000"
+  phases:
+    # ramp up to the target connections; tune arrivalRate/rampTo to reach ~200 concurrent sockets
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 50
+    - duration: 120
+      arrivalRate: 50
+      rampTo: 200
+    - duration: 180
+      arrivalRate: 0
+  engines:
+    socketio: {}
+  processor: ./processor.js
+  variables:
+    totalSessions: 100
+
+scenarios:
+  - name: "patient-flow"
+    engine: "socketio"
+    weight: 50
+    flow:
+      - function: initPatient
+      - emit:
+          channel: "join_session"
+          data:
+            sessionId: "{{ sessionId }}"
+            role: "{{ role }}"
+            clientId: "{{ clientId }}"
+      - think: 1
+      - loop:
+          - function: makeAnswer
+          - emit:
+              channel: "answer_submitted"
+              data:
+                messageId: "{{ messageId }}"
+                answer: "{{ answer }}"
+                sessionId: "{{ sessionId }}"
+          - think: 1
+        count: 20
+
+  - name: "therapist-flow"
+    engine: "socketio"
+    weight: 50
+    flow:
+      - function: initTherapist
+      - emit:
+          channel: "join_session"
+          data:
+            sessionId: "{{ sessionId }}"
+            role: "{{ role }}"
+            clientId: "{{ clientId }}"
+      - think: 1
+      - loop:
+          - function: makeAnswer
+          - emit:
+              channel: "instructor_note"
+              data:
+                messageId: "{{ messageId }}"
+                note: "note_{{ messageId }}"
+                sessionId: "{{ sessionId }}"
+          - think: 2
+        count: 10
+
+  - name: "reconnect-storm"
+    engine: "socketio"
+    weight: 5
+    flow:
+      - function: initPatient
+      - loop:
+          - emit:
+              channel: "ping"
+              data: { ts: "{{ $timestamp }}" }
+          - think: 0.5
+          - emit:
+              channel: "disconnect_sim"
+              data: { reason: "test-reconnect" }
+          - think: 0.2
+        count: 40
+
+# Notes:
+# - This script is a template. Adjust `target` to your backend socket URL and port.
+# - Use `npx artillery run cbt-socketio.yml` from this folder after `npm install`.
+# - The `reconnect-storm` scenario simulates frequent disconnect/connect behavior; adjust weight and counts to increase severity.

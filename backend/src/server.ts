@@ -2,6 +2,7 @@ import app from './app';
 import { connectDatabase, disconnectDatabase } from './config/db';
 import { env } from './config/env';
 import initSocket from './socket';
+import { startAnalyticsRollup } from './jobs/analyticsRollup.job';
 
 const startServer = async (): Promise<void> => {
 	await connectDatabase();
@@ -12,6 +13,9 @@ const startServer = async (): Promise<void> => {
 
 	// initialize socket.io (non-blocking)
 	void initSocket(server).then(() => console.log('Socket server initialized')).catch((err) => console.error('Socket init failed', err));
+
+	// start analytics rollup job
+	void startAnalyticsRollup();
 
 	const shutdown = async (signal: string): Promise<void> => {
 		console.log(`${signal} received. Shutting down gracefully...`);

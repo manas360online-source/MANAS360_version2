@@ -30,6 +30,15 @@ export const HeroSection: React.FC = () => {
         hasAnimated ? 'animate-fade-in-up' : ''
       }`}
     >
+      {/* Background hero image (decorative) */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10 bg-center bg-cover bg-no-repeat"
+        style={{
+          backgroundImage: "url('/hero.jpg')",
+          filter: 'brightness(0.65) saturate(0.95)',
+        }}
+      />
       {/* Main Headline */}
       <h1 className="font-serif font-light text-4xl md:text-5xl lg:text-6xl text-charcoal leading-tight mb-8 animate-breathe">
         You're{' '}

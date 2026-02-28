@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+backend/node_modules/
+frontend/node_modules/
+load-tests/**/node_modules/

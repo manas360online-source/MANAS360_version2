@@ -41,6 +41,7 @@ export interface EnvConfig {
 	port: number;
 	apiPrefix: string;
 	mongoUri: string;
+	databaseUrl?: string;
 	jwtAccessSecret: string;
 	jwtRefreshSecret: string;
 	jwtAccessExpiresIn: string;
@@ -63,6 +64,8 @@ export interface EnvConfig {
 	therapistDocumentSignedUrlTtlSeconds: number;
 	exportSignedUrlTtlSeconds: number;
 	sessionNotesEncryptionKey: string;
+	redisUrl: string;
+	analyticsRollupIntervalSeconds?: number;
 }
 
 export const env: EnvConfig = Object.freeze({
@@ -70,6 +73,7 @@ export const env: EnvConfig = Object.freeze({
 	port: parsePort(process.env.PORT),
 	apiPrefix: process.env.API_PREFIX ?? '/api',
 	mongoUri: process.env.MONGO_URI ?? 'mongodb://127.0.0.1:27017/manas360',
+	databaseUrl: process.env.DATABASE_URL,
 	jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? 'change-access-secret',
 	jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? 'change-refresh-secret',
 	jwtAccessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? '15m',
@@ -92,5 +96,7 @@ export const env: EnvConfig = Object.freeze({
 	therapistDocumentSignedUrlTtlSeconds: parseNumber(process.env.THERAPIST_DOCUMENT_SIGNED_URL_TTL_SECONDS, 900),
 	exportSignedUrlTtlSeconds: parseNumber(process.env.EXPORT_SIGNED_URL_TTL_SECONDS, 3600),
 	sessionNotesEncryptionKey: process.env.SESSION_NOTES_ENCRYPTION_KEY ?? '',
+	redisUrl: process.env.REDIS_URL ?? 'redis://127.0.0.1:6379',
+	analyticsRollupIntervalSeconds: parseNumber(process.env.ANALYTICS_ROLLUP_INTERVAL_SECONDS, 3600),
 });
 

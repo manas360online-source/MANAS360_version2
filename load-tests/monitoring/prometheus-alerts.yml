@@ -1,0 +1,43 @@
+groups:
+  - name: websocket-alerts
+    rules:
+      - alert: HighMessageLatency
+        expr: histogram_quantile(0.99, sum(rate(app_message_latency_seconds_bucket[5m])) by (le)) > 0.5
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "p99 message latency > 500ms"
+          description: "p99 latency is >500ms for last 5m"
+
+      - alert: RedisDown
+        expr: up{job="redis_exporter"} == 0
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: "Redis exporter not up"
+
+      - alert: DroppedConnectionsSpike
+        expr: increase(app_ws_dropped_connections_total[5m]) > 50
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "Spike in dropped websocket connections"
+
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.75
+        for: 2m
+        labels:
+          severity: warn
+        annotations:
+          summary: "Redis memory exceeds 75%"
+
+      - alert: NodeMemoryGrowing
+        expr: (process_resident_memory_bytes - process_resident_memory_bytes offset 10m) / process_resident_memory_bytes offset 10m > 0.2
+        for: 10m
+        labels:
+          severity: warn
+        annotations:
+          summary: "Node process memory growing >20% over 10m"

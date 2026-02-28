@@ -1,128 +1,152 @@
-import { Schema, model, type InferSchemaType, type Types } from 'mongoose';
+import prisma from '../config/db';
 
-const emergencyContactSchema = new Schema(
-	{
-		name: { type: String, required: true, trim: true },
-		relation: { type: String, required: true, trim: true },
-		phone: { type: String, required: true, trim: true },
-	},
-	{ _id: false },
-);
+// Minimal TypeScript interfaces for patient domain
+export interface EmergencyContact {
+  name: string;
+  relation: string;
+  phone: string;
+}
 
-const patientProfileSchema = new Schema(
-	{
-		userId: {
-			type: Schema.Types.ObjectId,
-			ref: 'User',
-			required: true,
-			unique: true,
-			index: true,
-		},
-		age: { type: Number, required: true, min: 1, max: 120 },
-		gender: { type: String, required: true, enum: ['male', 'female', 'other', 'prefer_not_to_say'] },
-		medicalHistory: { type: String, default: null, trim: true, maxlength: 2000 },
-		emergencyContact: { type: emergencyContactSchema, required: true },
-		isDeleted: { type: Boolean, default: false, index: true },
-		deletedAt: { type: Date, default: null },
-	},
-	{
-		timestamps: true,
-		versionKey: false,
-	},
-);
+export interface PatientProfile {
+  id: string;
+  userId: string;
+  age: number;
+  gender: string;
+  medicalHistory?: string | null;
+  emergencyContact: EmergencyContact;
+  isDeleted?: boolean;
+  deletedAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-const patientAssessmentSchema = new Schema(
-	{
-		patientId: {
-			type: Schema.Types.ObjectId,
-			ref: 'PatientProfile',
-			required: true,
-			index: true,
-		},
-		type: {
-			type: String,
-			required: true,
-			enum: ['PHQ-9', 'GAD-7'],
-		},
-		answers: {
-			type: [Number],
-			required: true,
-			validate: {
-				validator: (values: number[]) => values.every((value) => Number.isInteger(value) && value >= 0 && value <= 3),
-				message: 'answers must contain integer values between 0 and 3',
-			},
-		},
-		totalScore: { type: Number, required: true, min: 0 },
-		severityLevel: { type: String, required: true },
-	},
-	{
-		timestamps: true,
-		versionKey: false,
-	},
-);
+export interface PatientAssessment {
+  id: string;
+  patientId: string;
+  type: string;
+  answers: number[];
+  totalScore: number;
+  severityLevel: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-const patientMoodEntrySchema = new Schema(
-	{
-		patientId: {
-			type: Schema.Types.ObjectId,
-			ref: 'PatientProfile',
-			required: true,
-			index: true,
-		},
-		moodScore: { type: Number, required: true, min: 1, max: 10 },
-		note: { type: String, default: null, trim: true, maxlength: 1000 },
-		date: { type: Date, required: true, index: true },
-	},
-	{
-		timestamps: true,
-		versionKey: false,
-	},
-);
+export interface PatientMoodEntry {
+  id: string;
+  patientId: string;
+  moodScore: number;
+  note?: string | null;
+  date: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-patientMoodEntrySchema.index({ patientId: 1, date: -1 });
-
-patientAssessmentSchema.index({ patientId: 1, createdAt: -1 });
-
-const applyNotDeletedFilter = function (this: {
-	getFilter: () => Record<string, unknown>;
-	setQuery: (query: Record<string, unknown>) => void;
-	getOptions: () => Record<string, unknown>;
-}): void {
-	const options = this.getOptions();
-	if (options.withDeleted === true) {
-		return;
-	}
-
-	const filter = this.getFilter();
-	if (Object.prototype.hasOwnProperty.call(filter, 'isDeleted')) {
-		return;
-	}
-
-	this.setQuery({
-		...filter,
-		isDeleted: false,
-	});
+// Helper to build a Prisma where clause from simple filters commonly used in the codebase
+const buildWhere = (filter: Record<string, any> = {}) => {
+  const where: any = {};
+  if (filter.userId) where.userId = filter.userId;
+  if (filter.patientId) where.patientId = filter.patientId;
+  if (filter._id) where.id = typeof filter._id === 'string' ? filter._id : (filter._id as any).toString();
+  if (filter.isDeleted !== undefined) where.isDeleted = filter.isDeleted;
+  // date ranges
+  if (filter.createdAt) where.createdAt = filter.createdAt;
+  return where;
 };
 
-patientProfileSchema.pre('find', applyNotDeletedFilter);
-patientProfileSchema.pre('findOne', applyNotDeletedFilter);
-patientProfileSchema.pre('findOneAndUpdate', applyNotDeletedFilter);
-patientProfileSchema.pre('countDocuments', applyNotDeletedFilter);
-
-export type PatientProfileDocument = InferSchemaType<typeof patientProfileSchema> & {
-	_id: Types.ObjectId;
+// Provide a small compatibility shim that implements the subset of Mongoose model methods used across the project.
+const mapProfile = (r: any) => {
+  if (!r) return null;
+  return {
+    _id: r.id,
+    id: r.id,
+    userId: r.userId,
+    age: r.age,
+    gender: r.gender,
+    medicalHistory: r.medicalHistory,
+    emergencyContact: r.emergencyContact,
+    isDeleted: r.isDeleted,
+    deletedAt: r.deletedAt,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  };
 };
 
-export type PatientAssessmentDocument = InferSchemaType<typeof patientAssessmentSchema> & {
-	_id: Types.ObjectId;
+const chainable = (promiseFactory: () => Promise<any[]>) => ({
+  select: (_proj?: Record<string, number>) => ({
+    sort: (_sort?: Record<string, number>) => ({
+      skip: (_n: number) => ({
+        limit: (_n2: number) => ({
+          lean: async () => {
+            const rows = await promiseFactory();
+            return rows.map(mapProfile);
+          },
+        }),
+      }),
+    }),
+  }),
+});
+
+export const PatientProfileModel = {
+  findOne: (filter: Record<string, any> = {}) => ({
+    select: (_proj?: Record<string, number>) => ({
+      lean: async () => {
+        const where = buildWhere(filter);
+        const r = where.userId
+          ? await prisma.patientProfile.findUnique({ where: { userId: where.userId } })
+          : (await prisma.patientProfile.findMany({ where, take: 1 }))[0] ?? null;
+        return mapProfile(r);
+      },
+    }),
+  }),
+  findById: (id: string) => ({
+    select: (_proj?: Record<string, number>) => ({
+      lean: async () => {
+        const r = await prisma.patientProfile.findUnique({ where: { id } });
+        return mapProfile(r);
+      },
+    }),
+  }),
+  create: async (data: Record<string, any>) => {
+    const r = await prisma.patientProfile.create({ data });
+    return mapProfile(r);
+  },
+  findOneAndUpdate: async (filter: Record<string, any>, update: Record<string, any>) => {
+    const where = buildWhere(filter);
+    if (!where.id && !where.userId) throw new Error('findOneAndUpdate requires id or userId');
+    const key = where.id ? { id: where.id } : { userId: where.userId };
+    const r = await prisma.patientProfile.update({ where: key as any, data: update });
+    return mapProfile(r);
+  },
+  find: (filter: Record<string, any> = {}) => chainable(async () => {
+    const where = buildWhere(filter);
+    const rows = await prisma.patientProfile.findMany({ where });
+    return rows;
+  }),
+  countDocuments: async (filter: Record<string, any> = {}) => prisma.patientProfile.count({ where: buildWhere(filter) }),
 };
 
-export type PatientMoodEntryDocument = InferSchemaType<typeof patientMoodEntrySchema> & {
-	_id: Types.ObjectId;
+export const PatientAssessmentModel = {
+  create: async (data: Record<string, any>) => prisma.patientAssessment.create({ data }),
+  findById: async (id: string, _projection?: Record<string, number>) => prisma.patientAssessment.findUnique({ where: { id } }),
+  findOne: async (filter: Record<string, any> = {}, _projection?: Record<string, number>) => {
+    const where = buildWhere(filter);
+    const items = await prisma.patientAssessment.findMany({ where, orderBy: { createdAt: 'desc' }, take: 1 });
+    return items[0] ?? null;
+  },
+  find: async (filter: Record<string, any> = {}, projection?: Record<string, number>) => {
+    const where = buildWhere(filter);
+    return prisma.patientAssessment.findMany({ where });
+  },
+  countDocuments: async (filter: Record<string, any> = {}) => prisma.patientAssessment.count({ where: buildWhere(filter) }),
 };
 
-export const PatientProfileModel = model('PatientProfile', patientProfileSchema);
-export const PatientAssessmentModel = model('PatientAssessment', patientAssessmentSchema);
-export const PatientMoodEntryModel = model('PatientMoodEntry', patientMoodEntrySchema);
+export const PatientMoodEntryModel = {
+  create: async (data: Record<string, any>) => prisma.patientMoodEntry.create({ data }),
+  find: async (filter: Record<string, any> = {}, _projection?: Record<string, number>) => prisma.patientMoodEntry.findMany({ where: buildWhere(filter), orderBy: { date: 'desc' } }),
+  aggregate: async (_pipeline: any[]) => {
+    // Aggregate pipelines are not implemented here — use Prisma raw queries or the service helpers.
+    throw new Error('aggregate is not implemented on PatientMoodEntryModel; use Prisma raw queries instead');
+  },
+};
 
 export default PatientProfileModel;

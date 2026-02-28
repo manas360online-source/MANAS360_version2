@@ -1,6 +1,7 @@
 import UserModel, { type UserDocument } from '../models/user.model';
 import TherapistProfileModel from '../models/therapist.model';
 import TherapySessionModel from '../models/therapy-session.model';
+import { prisma } from '../config/db';
 import WalletTransactionModel from '../models/wallet-transaction.model';
 import SubscriptionModel, { type SubscriptionDocument } from '../models/subscription.model';
 import { AppError } from '../middleware/error.middleware';
@@ -215,7 +216,7 @@ export const getMetrics = async (): Promise<{
 			TherapistProfileModel.countDocuments({ isVerified: true, deletedAt: null }),
 
 			// Completed therapy sessions
-			TherapySessionModel.countDocuments({ status: 'completed' }),
+			prisma.therapySession.count({ where: { status: 'COMPLETED' } }),
 
 			// Total revenue - aggregate sum of all wallet transactions
 			WalletTransactionModel.aggregate([

@@ -10,7 +10,9 @@ import { OnboardingEmail } from './pages/OnboardingEmail'
 import { HomePage } from './pages/Home'
 import SessionSocketDemo from './components/SessionSocketDemo'
 import TherapistDashboard from './components/TherapistDashboard'
+import AnalyticsPage from './pages/therapist/AnalyticsPage'
 import LoginWidget from './components/LoginWidget'
+import SessionDetailPage from './pages/therapist/SessionDetailPage'
 
 interface AssessmentData {
   symptoms: string[];
@@ -52,6 +54,8 @@ function App() {
         <Route path="/therapist-dashboard" element={
           <TherapistDashboard sessionId={new URLSearchParams(window.location.hash.split('?')[1]).get('sessionId')} />
         } />
+        <Route path="/therapist/analytics" element={<AnalyticsPage />} />
+        <Route path="/therapist/sessions/:id" element={<SessionDetailPage />} />
         <Route path="/login" element={<LoginWidget />} />
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -127,7 +127,7 @@ export async function getSessionPresence(req: Request, res: Response) {
       // fallback to DB
       const rows = await prisma.sessionPresence.findMany({ where: { sessionId } });
       await r.disconnect();
-      return res.json({ presence: rows.map((r) => ({ userId: r.userId, role: r.role, status: r.status, lastSeenAt: r.lastSeenAt, clientCount: r.clientCount })) });
+      return res.json({ presence: rows.map((r: any) => ({ userId: r.userId, role: r.role, status: r.status, lastSeenAt: r.lastSeenAt, clientCount: r.clientCount })) });
     }
     const onlineUsers = new Map<string, { userId: string; role: string; clientCount: number }>();
     for (const mem of all) {

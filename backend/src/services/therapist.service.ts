@@ -95,7 +95,7 @@ const toSafeProfile = (profile: {
 export const createTherapistProfile = async (userId: string, input: TherapistProfileInput) => {
 	const user = await assertTherapistUser(userId);
 
-	const existingProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean();
+	const existingProfile = await TherapistProfileModel.findOne({ userId }).select({ _id: 1 }).lean();
 	if (existingProfile) {
 		throw new AppError('Therapist profile already exists', 409);
 	}
@@ -165,7 +165,7 @@ export const uploadMyTherapistDocument = async (
 ) => {
 	await assertTherapistUser(userId);
 
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean();
+	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select({ _id: 1 }).lean();
 	if (!therapistProfile) {
 		throw new AppError('Therapist profile not found. Please create profile first.', 404);
 	}

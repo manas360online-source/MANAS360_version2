@@ -6,6 +6,7 @@ import userRoutes from './user.routes';
 import adminRoutes from './admin.routes';
 import cbtSessionRoutes from './cbt-session.routes';
 import presenceRoutes from './presence.routes';
+import dashboardRoutes from './dashboard.routes';
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.use('/v1/therapists', therapistRoutes);
 router.use('/v1/admin', adminRoutes);
 router.use('/v1/cbt-sessions', cbtSessionRoutes);
 router.use('/v1/presence', presenceRoutes);
+router.use('/api/v1/therapist/dashboard', dashboardRoutes);
 
 export default router;
 

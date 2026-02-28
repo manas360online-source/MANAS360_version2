@@ -87,6 +87,11 @@ interface TherapistLeadsQuery {
 
 interface TherapistSessionHistoryQuery {
 	status?: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+	patient?: string;
+	from?: string;
+	to?: string;
+	type?: string;
+	completion?: 'complete' | 'incomplete';
 	page: number;
 	limit: number;
 }
