@@ -113,6 +113,9 @@ app.get('/health', async (req: Request, res: Response) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/providers', providerRoutes);
 app.use('/api/webhooks', paymentWebhookRoutes);
 
 // ============================================
