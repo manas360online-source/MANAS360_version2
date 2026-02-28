@@ -7,511 +7,855 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============ ENUMS ============
+// ============================================
+// ENUMS
+// ============================================
 
 enum UserRole {
   PATIENT
   THERAPIST
+  PSYCHIATRIST
+  COACH
   ADMIN
 }
 
+enum ProviderType {
+  THERAPIST
+  PSYCHIATRIST
+  COACH
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 enum SessionStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
-  DEPRECATED
-}
-
-enum QuestionType {
-  MULTIPLE_CHOICE
-  TEXT
-  SLIDER
-  CHECKBOX
-}
-
-enum PatientSessionStatus {
-  NOT_STARTED
-  IN_PROGRESS
+  PENDING_PAYMENT
+  CONFIRMED
+  LIVE
   COMPLETED
-  ABANDONED
-  PAUSED
+  NO_SHOW
+  CANCELLED
 }
 
-enum BranchingConditionOperator {
-  EQUALS
-  NOT_EQUALS
-  CONTAINS
-  GREATER_THAN
-  LESS_THAN
-  IN_ARRAY
+enum PaymentStatus {
+  CREATED
+  AUTHORIZED
+  CAPTURED
+  FAILED
+  REFUNDED
 }
 
-// ============ USERS ============
+enum PaymentType {
+  SESSION
+  SUBSCRIPTION
+  LEAD_PURCHASE
+  CONTENT_PURCHASE
+  THERAPIST_PLAN
+}
+
+enum SubscriptionStatus {
+  CREATED
+  AUTHENTICATED
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum SubscriptionTier {
+  FREE
+  BASIC
+  PREMIUM
+}
+
+enum LeadStatus {
+  AVAILABLE
+  PURCHASED
+  CONTACTED
+  CONVERTED
+  EXPIRED
+}
+
+enum PayoutStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PROCESSING
+  PAID
+  FAILED
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+  WHATSAPP
+  IN_APP
+  PUSH
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CrisisLevel {
+  NONE
+  LOW
+  MODERATE
+  HIGH
+  SEVERE
+}
+
+enum ContentType {
+  SOUND_TRACK
+  SLEEP_PROGRAM
+  MEDITATION
+  ARTICLE
+  VIDEO
+  WORKSHEET
+}
+
+// ============================================
+// CORE USER SYSTEM
+// ============================================
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  firstName String
-  lastName  String
-  role      UserRole
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String    @id @default(uuid())
+  email             String    @unique
+  phone             String?   @unique
+  passwordHash      String
+  firstName         String
+  lastName          String
+  role              UserRole
+  emailVerified     Boolean   @default(false)
+  phoneVerified     Boolean   @default(false)
+  avatarUrl         String?
+  preferredLanguage String    @default("en")
+  isActive          Boolean   @default(true)
+  lastLoginAt       DateTime?
+  organizationId    String?   // For corporate employees
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   // Relations
-  therapistSessions CBTSessionTemplate[]     @relation("TherapistSessions")
-  patientSessions   PatientSession[]
-  sessionResponses  PatientSessionResponse[]
-  patientProfile    PatientProfile?
-  therapyBookings   TherapySession[]
+  profile               UserProfile?
+  patientProfile        PatientProfile?
+  providerProfile       ProviderProfile?
+  sessions              Session[]                 @relation("PatientSessions")
+  providerSessions      Session[]                 @relation("ProviderSessions")
+  payments              Payment[]
+  subscriptions         Subscription[]
+  notifications         Notification[]
+  refreshTokens         RefreshToken[]
+  auditLogs             AuditLog[]
+  leadPurchases         LeadPurchase[]
+  contentPurchases      ContentPurchase[]
+  aiChatMessages        AIChatMessage[]
+  moodEntries           MoodEntry[]
+  organization          Organization?             @relation(fields: [organizationId], references: [id])
+  createdLeads          Lead[]                    @relation("LeadCreator")
+  assessments           Assessment[]
+  walletTransactions    WalletTransaction[]
+  payoutRequests        PayoutRequest[]
 
   @@index([email])
+  @@index([phone])
   @@index([role])
+  @@index([organizationId])
+  @@index([isActive])
   @@map("users")
 }
 
-// ============ CBT SESSION TEMPLATES ============
+model UserProfile {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  dateOfBirth       DateTime?
+  gender            String?
+  city              String?
+  state             String?
+  country           String    @default("India")
+  emergencyContact  Json?     // { name, phone, relation }
+  medicalHistory    Json?     // Encrypted
+  preferences       Json?     // UI preferences, timezone, etc.
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-model CBTSessionTemplate {
-  id                       String        @id @default(uuid())
-  title                    String
-  description              String?
-  isOfficial               Boolean       @default(false)
-  originTemplateId         String?
-  visibility               String        @default("ORG")
-  latestPublishedVersionId String?
-  version                  Int           @default(1)
-  status                   SessionStatus @default(DRAFT)
-  category                 String? // e.g., "Anxiety", "Depression", "Sleep"
-  targetAudience           String? // e.g., "Adults", "Teenagers"
-  estimatedDuration        Int? // in minutes
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Metadata
-  therapistId String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  publishedAt DateTime?
-
-  // Relations
-  therapist       User                     @relation("TherapistSessions", fields: [therapistId], references: [id], onDelete: Cascade)
-  questions       CBTQuestion[]
-  patientSessions PatientSession[]
-  versions        CBTSessionVersion[]
-  tags            TemplateTagOnTemplate[]
-  libraries       SessionTemplateLibrary[]
-
-  @@unique([id, version])
-  @@index([therapistId])
-  @@index([status])
-  @@index([category])
-  @@index([createdAt])
-  @@map("cbt_session_templates")
+  @@map("user_profiles")
 }
 
-model TemplateTag {
-  id        String                  @id @default(cuid())
-  name      String                  @unique
-  createdAt DateTime                @default(now())
-  templates TemplateTagOnTemplate[]
-
-  @@map("template_tags")
-}
-
-model TemplateTagOnTemplate {
-  templateId String
-  tagId      String
-  template   CBTSessionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  tag        TemplateTag        @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([templateId, tagId])
-  @@index([tagId])
-  @@map("template_tags_on_templates")
-}
-
-// ============ SESSION VERSIONING ============
-
-model CBTSessionVersion {
-  id           String    @id @default(uuid())
-  sessionId    String
-  version      Int
-  snapshotData Json // Full snapshot of template at this version
-  changeNotes  String?
-  createdBy    String?
-  createdAt    DateTime  @default(now())
-  publishedAt  DateTime?
-  isDraft      Boolean   @default(true)
-  checksum     String?
-
-  // Relations
-  session CBTSessionTemplate @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@unique([sessionId, version])
-  @@index([sessionId])
-  @@index([createdAt])
-  @@map("cbt_session_versions")
-}
-
-// ============ QUESTIONS ============
-
-model CBTQuestion {
-  id          String       @id @default(uuid())
-  sessionId   String
-  type        QuestionType
-  prompt      String
-  description String?
-  orderIndex  Int // Order within session
-  isRequired  Boolean      @default(true)
-  helpText    String?
-
-  // Type-specific configurations stored as JSON
-  // For MULTIPLE_CHOICE: { options: [{ id, label, value }] }
-  // For SLIDER: { min, max, step, labels: { min?, mid?, max? } }
-  // For CHECKBOX: { options: [{ id, label, value }] }
-  // For TEXT: { minLength?, maxLength?, placeholder?, validationRegex? }
-  metadata Json?
-
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  revokedAt DateTime?
+  ipAddress String?
+  userAgent String?
 
-  // Relations
-  session              CBTSessionTemplate       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  branchingRules       QuestionBranchingRule[]  @relation("BranchingFromQuestion")
-  parentBranchingRules QuestionBranchingRule[]  @relation("BranchingToQuestion")
-  responses            PatientResponse[]
-  sessionResponses     PatientSessionResponse[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([sessionId, orderIndex])
-  @@index([sessionId])
-  @@index([orderIndex])
-  @@map("cbt_questions")
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
-// ============ BRANCHING LOGIC ============
+// ============================================
+// PROVIDER SYSTEM
+// ============================================
 
-model QuestionBranchingRule {
-  id             String                     @id @default(uuid())
-  fromQuestionId String
-  toQuestionId   String
-  condition      Json // { operator: "EQUALS", value: "yes" }
-  operator       BranchingConditionOperator
-  conditionValue String // The value to match against
+model ProviderProfile {
+  id                  String             @id @default(uuid())
+  userId              String             @unique
+  providerType        ProviderType
+  licenseNumber       String
+  licenseBody         String // RCI, MCI, etc.
+  licenseVerified     Boolean            @default(false)
+  verificationStatus  VerificationStatus @default(PENDING)
+  verificationDate    DateTime?
+  verificationNotes   String?
+  specializations     Json               // ["anxiety", "depression", "trauma"]
+  approaches          Json               // ["CBT", "DBT", "Psychodynamic"]
+  languages           String[]
+  sessionRate         Int // In rupees
+  bio                 String?
+  yearsExperience     Int?
+  education           Json? // [{ degree, institution, year }]
+  certifications      Json? // [{ name, issuer, year }]
+  maxPatientsPerWeek  Int?
+  isAcceptingPatients Boolean            @default(true)
+  ratingAverage       Decimal?           @db.Decimal(3, 2)
+  totalSessions       Int                @default(0)
+  totalReviews        Int                @default(0)
+  leadPlanId          String?
+  bankAccount         Json? // Encrypted bank details
+  panNumber           String? // Encrypted
+  gstNumber           String?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 
-  // Optional: Multiple conditions (AND logic)
-  // { conditions: [{ operator, value }, ...] }
-  complexCondition Json?
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadPlan           LeadPlan?            @relation(fields: [leadPlanId], references: [id])
+  availability       ProviderAvailability[]
+  documents          ProviderDocument[]
+  wallet             ProviderWallet?
+  leads              Lead[]               @relation("AssignedLeads")
 
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  // Relations
-  fromQuestion CBTQuestion @relation("BranchingFromQuestion", fields: [fromQuestionId], references: [id], onDelete: Cascade)
-  toQuestion   CBTQuestion @relation("BranchingToQuestion", fields: [toQuestionId], references: [id], onDelete: Cascade)
-
-  @@index([fromQuestionId])
-  @@index([toQuestionId])
-  @@index([fromQuestionId, toQuestionId])
-  @@map("question_branching_rules")
+  @@index([providerType])
+  @@index([licenseVerified])
+  @@index([isAcceptingPatients])
+  @@index([verificationStatus])
+  @@map("provider_profiles")
 }
 
-// ============ PATIENT SESSIONS (Session Instances) ============
+model ProviderDocument {
+  id         String   @id @default(uuid())
+  providerId String
+  documentType String // "license", "certificate", "id_proof"
+  fileUrl    String
+  fileName   String
+  uploadedAt DateTime @default(now())
+  verifiedAt DateTime?
 
-model PatientSession {
-  id                String               @id @default(uuid())
-  patientId         String
-  templateId        String
-  templateVersion   Int // Lock to specific template version (deprecated)
-  templateVersionId String? // reference to CBTSessionVersion.id
-  templateSnapshot  Json? // snapshot of the template at session start (immutable)
-  status            PatientSessionStatus @default(NOT_STARTED)
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
-  // Progress tracking
-  currentQuestionIndex Int       @default(0)
-  completedAt          DateTime?
-  abandonedAt          DateTime?
-  startedAt            DateTime?
+  @@index([providerId])
+  @@map("provider_documents")
+}
 
-  // Session metadata
-  sessionNotes String? // Therapist notes about this session
+model ProviderAvailability {
+  id           String   @id @default(uuid())
+  providerId   String
+  dayOfWeek    Int // 0-6 (Sunday to Saturday)
+  startTime    String // "09:00"
+  endTime      String // "17:00"
+  isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Relations
-  patient   User                     @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  template  CBTSessionTemplate       @relation(fields: [templateId], references: [id], onDelete: Restrict)
-  responses PatientSessionResponse[]
-  exports   SessionExport[]
+  provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
-  @@index([patientId])
-  @@index([templateId])
-  @@index([status])
-  @@index([createdAt])
-  @@index([patientId, status])
-  @@map("patient_sessions")
+  @@index([providerId])
+  @@index([dayOfWeek])
+  @@map("provider_availability")
 }
 
-// ============ PATIENT PROFILES & HEALTH RECORDS ============
+// ============================================
+// WALLET & PAYOUT SYSTEM (CENTRALIZED MODEL)
+// ============================================
+
+model ProviderWallet {
+  id                String   @id @default(uuid())
+  providerId        String   @unique
+  availableBalance  Int      @default(0) // In paise
+  pendingBalance    Int      @default(0) // In paise
+  lifetimeEarnings  Int      @default(0) // In paise
+  totalWithdrawn    Int      @default(0) // In paise
+  lastPayoutAt      DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  provider     ProviderProfile    @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+  payouts      PayoutRequest[]
+
+  @@map("provider_wallets")
+}
+
+model WalletTransaction {
+  id              String   @id @default(uuid())
+  walletId        String
+  userId          String // Provider user ID
+  type            String // "CREDIT", "DEBIT", "REFUND"
+  amount          Int // In paise
+  balanceBefore   Int
+  balanceAfter    Int
+  description     String
+  referenceType   String? // "session", "payout", "adjustment"
+  referenceId     String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  wallet ProviderWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([referenceType, referenceId])
+  @@map("wallet_transactions")
+}
+
+model PayoutRequest {
+  id                    String        @id @default(uuid())
+  walletId              String
+  userId                String // Provider user ID
+  amount                Int // In paise
+  status                PayoutStatus  @default(REQUESTED)
+  approvedBy            String?
+  approvedAt            DateTime?
+  rejectionReason       String?
+  transactionReference  String? // From payment gateway
+  processingFee         Int? // In paise
+  netAmount             Int? // amount - processingFee
+  paidAt                DateTime?
+  failureReason         String?
+  metadata              Json? // Bank details, etc.
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  wallet ProviderWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payout_requests")
+}
+
+// ============================================
+// PATIENT SYSTEM
+// ============================================
 
 model PatientProfile {
-  id               String    @id @default(uuid())
-  userId           String    @unique
-  age              Int
-  gender           String
-  medicalHistory   String?
-  emergencyContact Json
-  isDeleted        Boolean   @default(false)
-  deletedAt        DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                      String    @id @default(uuid())
+  userId                  String    @unique
+  subscriptionTier        SubscriptionTier @default(FREE)
+  matchedProviderIds      String[]  // Array of provider IDs from AI matching
+  primaryConcerns         String[]  // ["anxiety", "depression"]
+  preferredLanguages      String[]
+  preferredProviderGender String? // "male", "female", "no_preference"
+  preferredApproaches     String[] // ["CBT", "mindfulness"]
+  emergencyContactName    String?
+  emergencyContactPhone   String?
+  consentGiven            Boolean   @default(false)
+  consentDate             DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-  // Relations
-  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  assessments     PatientAssessment[]
-  moodEntries     PatientMoodEntry[]
-  therapySessions TherapySession[]
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assessments Assessment[]
+  sessions    Session[]
 
-  @@index([userId])
   @@map("patient_profiles")
 }
 
-model PatientAssessment {
+model Assessment {
+  id             String      @id @default(uuid())
+  userId         String
+  patientId      String
+  assessmentType String      @default("PHQ-9") // "PHQ-9", "GAD-7", etc.
+  responses      Json        // Question responses
+  score          Int?
+  severity       String? // "minimal", "mild", "moderate", "severe"
+  isCrisis       Boolean     @default(false)
+  crisisLevel    CrisisLevel @default(NONE)
+  recommendations Json? // AI-generated
+  completedAt    DateTime    @default(now())
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientProfile PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([patientId])
+  @@index([assessmentType])
+  @@index([isCrisis])
+  @@index([completedAt])
+  @@map("assessments")
+}
+
+// ============================================
+// SESSION SYSTEM
+// ============================================
+
+model Session {
+  id                   String        @id @default(uuid())
+  patientId            String
+  providerId           String
+  scheduledAt          DateTime
+  duration             Int           @default(60) // minutes
+  status               SessionStatus @default(PENDING_PAYMENT)
+  fee                  Int // In paise
+  platformCommission   Int // In paise
+  providerEarning      Int // In paise
+  agoraChannelName     String?       @unique
+  agoraToken           String?
+  startedAt            DateTime?
+  endedAt              DateTime?
+  noShowMarkedBy       String? // "patient" or "provider"
+  noShowMarkedAt       DateTime?
+  cancellationReason   String?
+  cancelledAt          DateTime?
+  sessionNotes         String? // Provider notes (encrypted)
+  patientRating        Int?
+  patientFeedback      String?
+  providerRating       Int?
+  providerFeedback     String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  patient  User @relation("PatientSessions", fields: [patientId], references: [id], onDelete: Cascade)
+  provider User @relation("ProviderSessions", fields: [providerId], references: [id], onDelete: Cascade)
+  patientProfile PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade, map: "sessions_patient_profile_fkey")
+
+  @@unique([providerId, scheduledAt])
+  @@index([patientId])
+  @@index([providerId])
+  @@index([scheduledAt])
+  @@index([status])
+  @@index([agoraChannelName])
+  @@map("sessions")
+}
+
+// ============================================
+// PAYMENT SYSTEM (CENTRALIZED MODEL)
+// ============================================
+
+model Payment {
+  id                  String        @id @default(uuid())
+  userId              String
+  paymentType         PaymentType
+  amount              Int // In paise
+  currency            String        @default("INR")
+  status              PaymentStatus @default(CREATED)
+  razorpayOrderId     String?       @unique
+  razorpayPaymentId   String?       @unique
+  razorpaySignature   String?
+  referenceType       String? // "session", "subscription", "lead", "content"
+  referenceId         String?
+  metadata            Json?
+  failureReason       String?
+  capturedAt          DateTime?
+  refundedAt          DateTime?
+  refundAmount        Int? // In paise
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([paymentType])
+  @@index([status])
+  @@index([razorpayOrderId])
+  @@index([razorpayPaymentId])
+  @@index([referenceType, referenceId])
+  @@index([createdAt])
+  @@map("payments")
+}
+
+// ============================================
+// SUBSCRIPTION SYSTEM
+// ============================================
+
+model SubscriptionPlan {
+  id                String           @id @default(uuid())
+  name              String
+  tier              SubscriptionTier @unique
+  price             Int // Monthly price in paise
+  features          Json // Feature list
+  maxSessions       Int? // Per month
+  aiChatEnabled     Boolean          @default(false)
+  contentLibraryAccess Boolean       @default(false)
+  prioritySupport   Boolean          @default(false)
+  isActive          Boolean          @default(true)
+  razorpayPlanId    String?          @unique
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  userId               String
+  planId               String
+  status               SubscriptionStatus @default(CREATED)
+  razorpaySubscriptionId String?          @unique
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelledAt          DateTime?
+  cancellationReason   String?
+  metadata             Json?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan     SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([currentPeriodEnd])
+  @@map("subscriptions")
+}
+
+// ============================================
+// LEAD MARKETPLACE SYSTEM
+// ============================================
+
+model LeadPlan {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  leadsPerMonth Int
+  price        Int // In paise
+  priority     Int      @default(0)
+  isActive     Boolean  @default(true)
+  features     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  providers ProviderProfile[]
+  purchases LeadPurchase[]
+
+  @@map("lead_plans")
+}
+
+model Lead {
+  id                         String     @id @default(uuid())
+  patientId                  String
+  createdById                String
+  matchScore                 Int // 0-100
+  previewData                Json // Non-PII preview
+  fullData                   Json // Full data (encrypted)
+  status                     LeadStatus @default(AVAILABLE)
+  price                      Int // In paise (dynamic based on match score)
+  providerId                 String? // Assigned when purchased
+  purchasedAt                DateTime?
+  contactedAt                DateTime?
+  convertedAt                DateTime?
+  patientAcceptanceDeadline  DateTime // 2-hour window
+  expiresAt                  DateTime
+  createdAt                  DateTime   @default(now())
+  updatedAt                  DateTime   @updatedAt
+
+  createdBy User           @relation("LeadCreator", fields: [createdById], references: [id])
+  provider  ProviderProfile? @relation("AssignedLeads", fields: [providerId], references: [id])
+  purchases LeadPurchase[]
+
+  @@index([status])
+  @@index([providerId])
+  @@index([matchScore])
+  @@index([patientAcceptanceDeadline])
+  @@index([expiresAt])
+  @@map("leads")
+}
+
+model LeadPurchase {
+  id         String   @id @default(uuid())
+  leadId     String
+  providerId String
+  planId     String?
+  price      Int // In paise
+  purchasedAt DateTime @default(now())
+  metadata   Json?
+
+  lead     Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  provider User      @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  plan     LeadPlan? @relation(fields: [planId], references: [id])
+
+  @@index([leadId])
+  @@index([providerId])
+  @@index([purchasedAt])
+  @@map("lead_purchases")
+}
+
+// ============================================
+// CONTENT LIBRARY
+// ============================================
+
+model Content {
+  id          String      @id @default(uuid())
+  title       String
+  description String?
+  contentType ContentType
+  fileUrl     String?
+  thumbnailUrl String?
+  duration    Int? // In seconds
+  price       Int? // In paise (null = free)
+  isFree      Boolean     @default(false)
+  isPremiumOnly Boolean   @default(false)
+  tags        String[]
+  category    String?
+  rating      Decimal?    @db.Decimal(3, 2)
+  totalViews  Int         @default(0)
+  totalPurchases Int      @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  purchases ContentPurchase[]
+
+  @@index([contentType])
+  @@index([isFree])
+  @@index([isPremiumOnly])
+  @@index([isActive])
+  @@map("content_library")
+}
+
+model ContentPurchase {
+  id          String   @id @default(uuid())
+  contentId   String
+  userId      String
+  price       Int // In paise
+  purchasedAt DateTime @default(now())
+
+  content Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, userId])
+  @@index([userId])
+  @@index([contentId])
+  @@map("content_purchases")
+}
+
+// ============================================
+// AI CHAT SYSTEM (CLAUDE)
+// ============================================
+
+model AIChatMessage {
+  id        String   @id @default(uuid())
+  userId    String
+  role      String // "user" or "assistant"
+  content   String
+  metadata  Json? // Token count, model used, etc.
+  crisisDetected Boolean @default(false)
+  crisisLevel    CrisisLevel @default(NONE)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([crisisDetected])
+  @@index([createdAt])
+  @@map("ai_chat_messages")
+}
+
+// ============================================
+// MOOD TRACKING
+// ============================================
+
+model MoodEntry {
+  id        String   @id @default(uuid())
+  userId    String
+  mood      String // "happy", "sad", "anxious", etc.
+  intensity Int // 1-10
+  notes     String?
+  triggers  String[]
+  activities String[]
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([date])
+  @@map("mood_entries")
+}
+
+// ============================================
+// CORPORATE / B2B
+// ============================================
+
+model Organization {
   id            String   @id @default(uuid())
-  patientId     String
-  type          String
-  answers       Int[]
-  totalScore    Int
-  severityLevel String
+  name          String
+  contactEmail  String
+  contactPhone  String?
+  address       Json?
+  gstNumber     String?
+  contractStart DateTime?
+  contractEnd   DateTime?
+  isActive      Boolean  @default(true)
+  discount      Int      @default(0) // Percentage
+  billingCycle  String   @default("monthly") // "monthly", "quarterly", "annually"
+  metadata      Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Relations
-  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  employees       User[]
+  corporateInvoices CorporateInvoice[]
 
-  @@index([patientId, createdAt])
-  @@map("patient_assessments")
+  @@map("organizations")
 }
 
-model PatientMoodEntry {
-  id        String   @id @default(uuid())
-  patientId String
-  moodScore Int
-  note      String?
-  date      DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model CorporateInvoice {
+  id             String   @id @default(uuid())
+  organizationId String
+  invoiceNumber  String   @unique
+  amount         Int // In paise
+  taxAmount      Int? // In paise
+  totalAmount    Int // In paise
+  periodStart    DateTime
+  periodEnd      DateTime
+  dueDate        DateTime
+  paidAt         DateTime?
+  paymentStatus  String   @default("pending") // "pending", "paid", "overdue"
+  fileUrl        String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
 
-  // Relations
-  patient PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@index([patientId, date])
-  @@map("patient_mood_entries")
+  @@index([organizationId])
+  @@index([paymentStatus])
+  @@index([dueDate])
+  @@map("corporate_invoices")
 }
 
-// ============ PATIENT RESPONSES ============
+// ============================================
+// NOTIFICATION SYSTEM
+// ============================================
 
-model PatientSessionResponse {
-  id         String @id @default(uuid())
-  sessionId  String
-  patientId  String
-  questionId String
+model Notification {
+  id        String               @id @default(uuid())
+  userId    String
+  type      NotificationType
+  priority  NotificationPriority @default(MEDIUM)
+  title     String
+  body      String
+  data      Json?
+  channel   String? // email, sms, whatsapp, push
+  sentAt    DateTime?
+  readAt    DateTime?
+  failedAt  DateTime?
+  retryCount Int                 @default(0)
+  createdAt DateTime             @default(now())
 
-  // Response data (flexible to support all question types)
-  // MULTIPLE_CHOICE: { selectedOptionId: "abc123" }
-  // TEXT: { text: "Patient's response" }
-  // SLIDER: { value: 7, min: 0, max: 10 }
-  // CHECKBOX: { selectedOptions: ["opt1", "opt2"] }
-  responseData Json
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Timing
-  timeSpentSeconds  Int? // Time spent on this question
-  answeredAt        DateTime  @default(now())
-  // Message acknowledgement fields
-  messageId         String?   @unique
-  deliveredToStream Boolean   @default(false)
-  acknowledgedAt    DateTime?
-  retryCount        Int       @default(0)
-
-  // Related response for follow-ups
-  previousResponseId String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  session           PatientSession           @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  patient           User                     @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  question          CBTQuestion              @relation(fields: [questionId], references: [id], onDelete: Restrict)
-  previousResponse  PatientSessionResponse?  @relation("FollowUpResponse", fields: [previousResponseId], references: [id], onDelete: SetNull)
-  followUpResponses PatientSessionResponse[] @relation("FollowUpResponse")
-
-  @@unique([sessionId, questionId])
-  @@index([sessionId])
-  @@index([patientId])
-  @@index([questionId])
-  @@index([answeredAt])
-  @@index([sessionId, patientId])
-  @@map("patient_session_responses")
-}
-
-// ============ RESPONSE ANALYTICS ============
-
-model PatientResponse {
-  id         String @id @default(uuid())
-  questionId String
-
-  // Aggregated response data
-  // { multipleChoice: { optionId: count }, text: { ... }, slider: { average, min, max } }
-  responseStats  Json
-  totalResponses Int  @default(0)
-
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  question CBTQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@unique([questionId])
-  @@index([questionId])
-  @@map("patient_responses")
-}
-
-// ============ SESSION EXPORTS ============
-
-model SessionExport {
-  id        String  @id @default(uuid())
-  sessionId String
-  jobId     String? @unique
-  format    String // "PDF" | "CSV" | "JSON"
-  fileName  String
-  filePath  String? // S3 path or local path
-  fileSize  Int?
-
-  // Export status
-  status       String  @default("PENDING") // "PENDING" | "COMPLETED" | "FAILED"
-  errorMessage String?
-
-  createdAt DateTime  @default(now())
-  expiresAt DateTime? // For temporary files
-
-  jobCreatedAt DateTime? @default(now())
-
-  // Relations
-  session PatientSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@index([sessionId])
-  @@index([status])
-  @@index([createdAt])
-  @@map("session_exports")
-}
-
-// ============ THERAPY BOOKINGS (calendar/booking system) ============
-
-enum BookingStatus {
-  PENDING
-  CONFIRMED
-  CANCELLED
-  COMPLETED
-}
-
-model TherapySession {
-  id                 String        @id @default(uuid())
-  bookingReferenceId String        @unique
-  patientProfileId   String
-  therapistProfileId String
-  dateTime           DateTime
-  status             BookingStatus @default(PENDING)
-
-  // Encrypted therapist note (optional)
-  noteEncryptedContent     String?
-  noteIv                   String?
-  noteAuthTag              String?
-  noteUpdatedAt            DateTime?
-  noteUpdatedByTherapistId String?
-
-  cancelledAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  patientProfile   PatientProfile @relation(fields: [patientProfileId], references: [id], onDelete: Cascade)
-  therapistProfile User           @relation(fields: [therapistProfileId], references: [id], onDelete: Cascade)
-
-  @@index([therapistProfileId, dateTime])
-  @@index([patientProfileId, dateTime])
-  @@map("therapy_sessions")
-}
-
-// ============ SESSION TEMPLATES LIBRARY ============
-
-model SessionTemplateLibrary {
-  id         String   @id @default(uuid())
-  templateId String
-  category   String // "Public" | "Organization" | "Private"
-  tags       String[] // ["anxiety", "cbt", "beginner"]
-  ratings    Int? // Average rating
-  downloads  Int      @default(0)
-  isApproved Boolean  @default(false)
-  approvedBy String? // Admin user ID
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  template CBTSessionTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
-
-  @@unique([templateId])
-  @@index([category])
-  @@index([isApproved])
-  @@map("session_template_library")
-}
-
-// ============ AUDIT & COMPLIANCE ============
-
-model SessionAuditLog {
-  id         String  @id @default(cuid())
-  sessionId  String?
-  userId     String?
-  action     String // "CREATED", "UPDATED", "DELETED", "PUBLISHED"
-  entityType String // "SESSION_TEMPLATE", "PATIENT_SESSION", "RESPONSE"
-  entityId   String
-  changes    Json? // Diff of what changed
-  ipAddress  String?
-
-  createdAt DateTime @default(now())
-
-  @@index([sessionId])
   @@index([userId])
-  @@index([action])
-  @@index([createdAt])
-  @@map("session_audit_logs")
+  @@index([readAt])
+  @@index([sentAt])
+  @@index([priority])
+  @@map("notifications")
 }
 
-// ============ PRESENCE TRACKING ============
+// ============================================
+// RBAC SYSTEM
+// ============================================
 
-model SessionPresence {
-  id          String   @id @default(cuid())
-  sessionId   String
-  userId      String
-  role        UserRole
-  status      String   @default("OFFLINE")
-  lastSeenAt  DateTime @default(now())
-  clientCount Int      @default(0)
-  updatedAt   DateTime @updatedAt
-
-  @@unique([sessionId, userId, role])
-  @@index([sessionId])
-  @@index([userId])
-  @@map("session_presence")
-}
-
-// Export logs for audit trail when therapists export session data
-model ExportLog {
-  id          String   @id @default(cuid())
-  therapistId String
-  sessionId   String
-  exportType  String
-  ipAddress   String?
-  userAgent   String?
+model Permission {
+  id          Int      @id @default(autoincrement())
+  resource    String // "session", "payment", "user", etc.
+  action      String // "create", "read", "update", "delete"
+  description String?
   createdAt   DateTime @default(now())
 
-  @@index([therapistId])
-  @@index([sessionId])
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           Int        @id @default(autoincrement())
+  role         UserRole
+  permissionId Int
+  createdAt    DateTime   @default(now())
+
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================
+// AUDIT & LOGGING
+// ============================================
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String // "CREATE", "UPDATE", "DELETE", "LOGIN", etc.
+  entityType String // "user", "session", "payment", etc.
+  entityId   String?
+  changes    Json? // Before/after diff
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
   @@index([createdAt])
-  @@map("export_logs")
+  @@map("audit_logs")
+}
+
+// ============================================
+// WEBHOOK LOGS (Idempotency)
+// ============================================
+
+model WebhookLog {
+  id        String   @id @default(uuid())
+  provider  String // "razorpay"
+  eventId   String   @unique
+  eventType String
+  payload   Json
+  signature String?
+  verified  Boolean  @default(false)
+  processed Boolean  @default(false)
+  processedAt DateTime?
+  errorMessage String?
+  retryCount Int     @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([provider, eventId])
+  @@index([processed])
+  @@index([createdAt])
+  @@map("webhook_logs")
 }

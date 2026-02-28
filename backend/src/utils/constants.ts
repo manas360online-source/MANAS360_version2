@@ -1,54 +1,51 @@
-export const ALLOWED_PROFILE_UPDATE_FIELDS = ['name', 'phone'] as const;
+export const HTTP_STATUS = {
+  OK: 200,
+  CREATED: 201,
+  NO_CONTENT: 204,
+  BAD_REQUEST: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+  UNPROCESSABLE_ENTITY: 422,
+  TOO_MANY_REQUESTS: 429,
+  INTERNAL_SERVER_ERROR: 500,
+} as const;
 
-export const FORBIDDEN_PROFILE_UPDATE_FIELDS = ['role', 'email', 'password', 'passwordHash'] as const;
+export const ERROR_CODES = {
+  // Auth
+  INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
+  TOKEN_EXPIRED: 'TOKEN_EXPIRED',
+  TOKEN_INVALID: 'TOKEN_INVALID',
+  UNAUTHORIZED: 'UNAUTHORIZED',
+  FORBIDDEN: 'FORBIDDEN',
+  
+  // Wallet
+  INSUFFICIENT_BALANCE: 'INSUFFICIENT_BALANCE',
+  PAYOUT_BELOW_MINIMUM: 'PAYOUT_BELOW_MINIMUM',
+  PAYOUT_ALREADY_PROCESSED: 'PAYOUT_ALREADY_PROCESSED',
+  
+  // Payment
+  PAYMENT_FAILED: 'PAYMENT_FAILED',
+  PAYMENT_ALREADY_CAPTURED: 'PAYMENT_ALREADY_CAPTURED',
+  INVALID_WEBHOOK_SIGNATURE: 'INVALID_WEBHOOK_SIGNATURE',
+  DUPLICATE_WEBHOOK: 'DUPLICATE_WEBHOOK',
+  
+  // Session
+  SESSION_ALREADY_BOOKED: 'SESSION_ALREADY_BOOKED',
+  SESSION_EXPIRED: 'SESSION_EXPIRED',
+  PROVIDER_NOT_AVAILABLE: 'PROVIDER_NOT_AVAILABLE',
+  
+  // General
+  VALIDATION_ERROR: 'VALIDATION_ERROR',
+  RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+} as const;
 
-export type AllowedProfileField = (typeof ALLOWED_PROFILE_UPDATE_FIELDS)[number];
-
-export interface ProfileUpdatePayload {
-	name?: string;
-	phone?: string;
-}
-
-export interface ChangePasswordPayload {
-	currentPassword: string;
-	newPassword: string;
-	confirmPassword: string;
-}
-
-export const filterProfileUpdatePayload = (
-	rawPayload: Record<string, unknown>,
-): {
-	filtered: ProfileUpdatePayload;
-	forbiddenFields: string[];
-	ignoredFields: string[];
-} => {
-	const allowedFields = new Set<string>(ALLOWED_PROFILE_UPDATE_FIELDS);
-	const forbiddenFieldsSet = new Set<string>(FORBIDDEN_PROFILE_UPDATE_FIELDS);
-
-	const filtered: ProfileUpdatePayload = {};
-	const forbiddenFields: string[] = [];
-	const ignoredFields: string[] = [];
-
-	for (const [key, value] of Object.entries(rawPayload)) {
-		if (forbiddenFieldsSet.has(key)) {
-			forbiddenFields.push(key);
-			continue;
-		}
-
-		if (allowedFields.has(key)) {
-			if (typeof value === 'string') {
-				filtered[key as AllowedProfileField] = value;
-			}
-			continue;
-		}
-
-		ignoredFields.push(key);
-	}
-
-	return {
-		filtered,
-		forbiddenFields,
-		ignoredFields,
-	};
-};
-
+export const WEBHOOK_EVENTS = {
+  PAYMENT_AUTHORIZED: 'payment.authorized',
+  PAYMENT_CAPTURED: 'payment.captured',
+  PAYMENT_FAILED: 'payment.failed',
+  SUBSCRIPTION_ACTIVATED: 'subscription.activated',
+  SUBSCRIPTION_CHARGED: 'subscription.charged',
+} as const;
