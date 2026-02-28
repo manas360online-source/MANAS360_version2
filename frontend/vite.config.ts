@@ -5,8 +5,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '0.0.0.0', // CRITICAL: Bind to all interfaces for container/remote access
     port: 3000,
-    open: true,
+    strictPort: true, // Fail if port is already in use
+    open: false, // Don't try to open browser in container
     cors: true,
   },
   build: {
@@ -24,6 +26,8 @@ export default defineConfig({
     },
   },
   preview: {
+    host: '0.0.0.0', // CRITICAL: Same for preview mode
     port: 3000,
+    strictPort: true,
   },
 })
