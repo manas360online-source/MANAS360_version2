@@ -9,14 +9,16 @@
 /* Root variables for Therapeutic Color Psychology */
 @layer base {
   :root {
-    /* Colors */
+    /* Refined Colors */
     --calm-sage: #A8B5A0;
     --soft-lavender: #C4B5D9;
     --warm-terracotta: #D4A89E;
     --gentle-blue: #9DADBE;
     --cream: #F5F3EE;
-    --charcoal: #2C3333;
-    --accent-coral: #E88B7A;
+    --charcoal: #3D4848;
+    --accent-coral: #E8B4A0;
+    --wellness-primary: #8BA8A8;
+    --wellness-text: #3D4848;
 
     /* Typography */
     --serif: 'Crimson Pro', serif;
@@ -33,9 +35,39 @@
   }
 
   body {
-    @apply font-sans text-charcoal bg-gradient-full overflow-x-hidden antialiased;
+    @apply font-sans text-wellness-text bg-wellness-bg overflow-x-hidden antialiased;
     background-attachment: fixed;
-    line-height: 1.6;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Headings - softer hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-wellness-text;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+  }
+
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+    line-height: 1.15;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl;
+    line-height: 1.2;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+    line-height: 1.3;
+  }
+
+  /* Paragraph spacing */
+  p {
+    @apply mb-4;
+    line-height: 1.8;
   }
 
   /* Safe area insets for mobile notches */
