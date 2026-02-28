@@ -11,6 +11,9 @@ import { rateLimit } from './middleware/rateLimit.middleware';
 // Import routes
 import authRoutes from './modules/auth/auth.routes';
 import sessionRoutes from './modules/session/session.routes';
+import walletRoutes from './modules/wallet/wallet.routes';
+import adminRoutes from './modules/admin/admin.routes';
+import providerRoutes from './modules/provider/provider.routes';
 import paymentWebhookRoutes from './modules/payment/payment.routes';
 
 const app: Express = express();
