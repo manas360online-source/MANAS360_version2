@@ -1,0 +1,207 @@
+<analysis>An analysis of the user's request and the agent's actions reveals a significant pivot in the project's direction. Initially, the task was to refine the UI of an existing mental wellness platform. However, this led to a series of frontend debugging sessions to resolve preview environment issues.
+
+A major shift occurred when the user provided a new, highly detailed system architecture document (), effectively rebooting the project. The agent then discarded all previous work and began building a new, production-grade backend from scratch based on a completely different tech stack (Node.js/Express/Prisma/PostgreSQL).
+
+The agent successfully laid the foundation for this new backend, implementing critical, security-focused modules for authentication, a centralized payment system with internal wallets, and session management. The last action was beginning the implementation of an AI chat service as requested by the user. The primary task for the next agent is to continue this backend build-out, as the frontend is now completely disconnected and will require a full rewrite to align with the new backend architecture.
+
+**original_problem_statement:**
+The user wants to build a secure, scalable, production-grade, mobile-ready mental wellness platform named **MANAS360**.
+
+**PRODUCT REQUIREMENTS:**
+-   **Tech Stack:** React/Vite (Frontend), Node.js/Express/TypeScript/Prisma/PostgreSQL (Backend), Redis, BullMQ.
+-   **Architecture:** A modular monolith backend with a centralized payment model.
+-   **Payment System:** All payments flow to a central platform account (Razorpay). An internal wallet/ledger system tracks provider earnings (, ), with a manual admin-approved payout process. **No automatic split payments.**
+-   **Core Features:** Multi-role authentication (Patient, Provider, Admin), session booking, lead marketplace, provider wallets, subscription management.
+-   **Integrations:** Razorpay (Payments), Agora (Video), Claude (AI Chat), Twilio (Notifications), AWS SES (Email), AWS S3 (Storage).
+-   **Security:** Strict RBAC, HMAC webhook verification, DB transactions for financial operations, refresh token rotation, rate limiting, and CSRF protection.
+-   **Scalability:** Use of background job queues (BullMQ) for tasks like notifications and data reconciliation.
+-   **Frontend:** The UI must be emotionally safe, accessible, and provide role-based dashboards with clear loading/error states.
+
+**User's preferred language**: English
+
+**what currently exists?**
+A new backend codebase for the MANAS360 platform has been built from scratch using Express.js, TypeScript, and Prisma. The Prisma schema for a PostgreSQL database is complete.
+
+Key modules have been implemented:
+-   **Auth:** Full JWT authentication with access/refresh token rotation.
+-   **Wallet:** A transaction-safe service for managing provider earnings.
+-   **Payment:** Centralized Razorpay integration with secure webhook handling.
+-   **Session:** Core logic for booking and managing therapy sessions.
+-   **Middleware:** A comprehensive stack for security, including authentication, RBAC, error handling, and input validation.
+
+The project structure is a modular monolith. The entire frontend is now disconnected and obsolete.
+
+**Last working item**:
+-   **Last item agent was working:** Implementing the AI Chat Service, specifically creating the  file for Claude API integration.
+-   **Status:** IN PROGRESS
+-   **Agent Testing Done:** N
+-   **Which testing method agent to use?** backend testing agent
+-   **User Testing Done:** N
+
+**All Pending/In progress Issue list**:
+-   **Issue 1 (P0): Incomplete Backend Dependencies Installation.** The  was created with all necessary dependencies, but yarn install v1.22.22
+info No lockfile found.
+[1/4] Resolving packages...
+[2/4] Fetching packages...
+[3/4] Linking dependencies...
+[4/4] Building fresh packages...
+success Saved lockfile.
+Done in 0.05s. was never run. The application will fail to start without this step.
+
+**In progress Task List**:
+-   **Task 1 (P0): Complete AI Chat (Claude) Implementation.**
+    -   **Where to resume:**
+        1.  Finish writing the logic in .
+        2.  Create  and .
+        3.  Integrate the new AI routes into the main .
+    -   **What will be achieved with this?** A core API for providing AI-powered chat functionality to users.
+    -   **Status:** IN PROGRESS
+    -   **Should Test frontend/backend/both after fix?** Backend
+
+**Upcoming and Future Tasks**
+**Upcoming Tasks (Priority 2):**
+-   **P1: Implement Agora Video Service:** The  file exists but is empty. Implement token generation logic, and create the corresponding controller and routes for initiating video sessions.
+-   **P1: Implement Notification Service:** Create a  to abstract Twilio (SMS/WhatsApp) and AWS SES (Email) functionality.
+-   **P1: Implement Background Job Queues:** Set up BullMQ with Redis. Refactor tasks like notifications and session expiry to run as background jobs.
+-   **P1: Implement Lead Marketplace Module:** Create the services, controllers, and routes for providers to browse and purchase patient leads. Ensure wallet deductions for purchases use database transactions.
+-   **P1: Implement Subscription Management:** Build the logic for creating and managing recurring subscriptions via Razorpay.
+-   **P1: Implement Patient Assessment APIs:** Develop endpoints for creating, submitting, and retrieving patient psychological assessments.
+
+**Future Tasks:**
+-   **P2: Implement Frontend:** Rebuild the entire React frontend from scratch to connect to the new Express backend API. This includes creating role-based dashboards, payment flows, session booking interfaces, and all other UI components.
+-   **P2: Implement Testing:**
+    -   Write Jest unit tests for all critical business logic, especially in  and .
+    -   Write integration tests for the main API workflows (e.g., booking a session, completing a payout).
+-   **P3: Implement Remaining Modules:**
+    -   Content Library (for articles/videos).
+    -   Corporate B2B Module (for company-sponsored plans).
+    -   Mood Tracking APIs.
+    -   Analytics Dashboard APIs.
+-   **P4: Production Readiness:** Implement health check endpoints, graceful shutdown, and prepare CI/CD configurations.
+
+**Completed work in this session**
+-   **Project Pivot & Backend Scaffolding:**
+    -   Pivoted from a FastAPI/MongoDB stack to a production-grade Express/Prisma/PostgreSQL stack.
+    -   Established a complete modular monolith backend structure.
+    -   Configured the full Prisma schema and generated the database client.
+-   **Core Backend Modules Implemented:**
+    -   **Auth Module:** Full user authentication with secure JWT access/refresh token rotation (, , ).
+    -   **Wallet Module:** Transaction-safe internal ledger system for provider earnings ().
+    -   **Payment Module:** Centralized Razorpay payment processing with secure HMAC webhook verification (, ).
+    -   **Session Module:** Logic for booking and managing therapy sessions tied to payments (, , ).
+-   **Security & Middleware Layer:**
+    -   Implemented a full middleware stack including auth, RBAC, error handling, rate limiting, and Zod validation.
+-   **Configuration:**
+    -   Created comprehensive , , and  files for the new backend.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+-   **Backend:** Node.js, Express.js, TypeScript
+-   **Database:** PostgreSQL with Prisma ORM
+-   **Architecture:** Modular Monolith
+-   **Authentication:** JWT with Refresh Token Rotation
+-   **Payments:** Centralized model using Razorpay. Webhooks are the source of truth, verified with HMAC signatures.
+-   **Wallets:** An internal ledger system ( table) with  and , managed exclusively through atomic database transactions.
+-   **Security:** Middleware-driven RBAC, rate limiting, input validation with Zod.
+
+**key DB schema**
+-   **User:** { id, email, password, role, ... }
+-   **Wallet:** { id, provider_id, available_balance, pending_balance }
+-   **WalletTransaction:** Records all balance changes for audit purposes.
+-   **Session:** { id, patient_id, provider_id, status, payment_id, ... }
+-   **Payment:** { id, amount, status, razorpay_order_id, ... }
+-   **PayoutRequest:** { id, provider_id, amount, status }
+-   **RefreshToken:** Stores refresh tokens for JWT rotation.
+
+**changes in tech stack**
+-   Complete migration from an initial FastAPI/MongoDB stack to a new **Express.js/TypeScript/Prisma/PostgreSQL** backend.
+
+**All files of reference**
+-   : The single source of truth for the database schema.
+-   : Contains the critical, transaction-safe logic for managing funds.
+-   : Handles Razorpay order creation and webhook verification.
+-   : Implements the business logic for handling confirmed payments.
+-   : Implements user registration and JWT refresh token rotation.
+-   : Lists all required backend dependencies.
+-   : Contains placeholders for all required API keys and secrets.
+
+**Areas that need refactoring**:
+-   The entire  directory is now obsolete. It was designed for a different backend (FastAPI/MongoDB) and UI concept. It needs to be completely rewritten to communicate with the new Express API.
+
+**key api endpoints**
+-   
+-   : Endpoint for Razorpay to send payment events.
+-   
+-   
+-   
+
+**Critical Info for New Agent**
+-   **Project Reboot:** The project was completely restarted. Ignore any previous work on the old FastAPI application and its UI. Your focus is solely on building out the new Express backend as defined in the  architecture.
+-   **Centralized Payments:** The payment model is strictly centralized. All money goes to the platform's Razorpay account. Provider earnings are tracked internally in the  table. Payouts are a manual, admin-approved process.
+-   **Transactional Integrity:** All financial operations, especially updating wallet balances, **must** be wrapped in a Prisma transaction () to ensure data consistency.
+-   **Webhook is Truth:** Never trust the frontend for payment confirmation. The  event from the Razorpay webhook is the only source of truth.
+-   **Dependencies:** The backend dependencies listed in  have not been installed. You must run yarn install v1.22.22
+[1/4] Resolving packages...
+success Already up-to-date.
+Done in 0.03s. in the  directory before attempting to run the server.
+
+**documents and test reports created in this job**
+-   : The user-provided architecture document that dictates the current development path.
+
+**Last 10 User Messages and any pending HUMAN messages**
+1.  **user:** Asks to implement Priority 3 features (AI Chat, Content Library, etc.). (IN PROGRESS)
+2.  **agent:** Starts implementing the AI Chat Service (Claude Integration). (DONE)
+3.  **user:** Asks to implement Priority 2 and 3 features. (DONE)
+4.  **agent:** Provides a summary of completed backend work and outlines next steps (Priorities 1, 2, 3). (DONE)
+5.  **user:** next steps - prompts agent to continue. (DONE)
+6.  **agent:** Implements routes for Wallet, Admin, and Provider, and creates  and . (DONE)
+7.  **user:** implement next phase all - prompts agent to continue with all remaining steps. (DONE)
+8.  **agent:** Provides summary after implementing Auth, Wallet, Razorpay, and Session services. (DONE)
+9.  **user:** Asks for details on all keys and directs the agent to implement everything. (DONE)
+10. **agent:** Starts the full backend build-out after acknowledging the new architecture. (DONE)
+
+**Project Health Check:**
+-   **Broken:**
+    -   The entire frontend is non-functional as it is not connected to the new backend.
+    -   The backend code is written but has not been installed (yarn install v1.22.22
+[1/4] Resolving packages...
+success Already up-to-date.
+Done in 0.04s.) or tested.
+-   **Mocked:** None.
+
+**3rd Party Integrations**
+-   **Prisma:** ORM for PostgreSQL.
+-   **Razorpay:** For payment processing. Requires User API Key.
+-   **Agora:** For video sessions. Implementation started. Requires User API Key.
+-   **Claude:** For AI chat. Implementation in progress. Requires User API Key.
+-   **Redis:** Planned for caching and queues.
+-   **BullMQ:** Planned for background jobs.
+-   **Twilio:** Planned for SMS/WhatsApp notifications. Requires User API Key.
+-   **AWS SES:** Planned for email notifications. Requires User API Key.
+-   **AWS S3:** Planned for file storage. Requires User API Key.
+
+**Testing status**
+-   **Testing agent used after significant changes:** NO
+-   **Troubleshoot agent used after agent stuck in loop:** NO
+-   **Test files created:** []
+-   **Known regressions:** The entire application regressed to a non-functional state due to the architectural pivot.
+
+**Credentials to test flow:**
+The  file contains placeholders for all necessary credentials. The user has acknowledged they need to be provided. The agent must request the following keys before proceeding with testing the respective integrations:
+-   
+-   
+-   
+-   
+-   
+-   , 
+-   , 
+
+**What agent forgot to execute**
+-   The agent did not run yarn install v1.22.22
+[1/4] Resolving packages...
+success Already up-to-date.
+Done in 0.19s. in the  directory after creating the  file. The application is currently not runnable.
+-   The agent created  but did not implement the controller or routes for it before being redirected by the user.
+-   No testing of any kind (unit, integration) has been implemented, despite it being a requirement in the user's prompt.</analysis>
