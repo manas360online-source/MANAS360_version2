@@ -445,7 +445,7 @@ model Session {
 
   patient  User @relation("PatientSessions", fields: [patientId], references: [id], onDelete: Cascade)
   provider User @relation("ProviderSessions", fields: [providerId], references: [id], onDelete: Cascade)
-  patientProfile PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patientProfile PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade, map: "sessions_patient_profile_fkey")
 
   @@unique([providerId, scheduledAt])
   @@index([patientId])
