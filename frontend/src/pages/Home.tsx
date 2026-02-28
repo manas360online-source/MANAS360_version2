@@ -157,7 +157,7 @@ export const HomePage: React.FC = () => {
                    </p>
                    <button 
                      onClick={handleCloseLogin}
-                     className="w-full px-10 py-4 rounded-full bg-gradient-to-r from-[rgb(157, 173, 190)] to-[rgb(139, 168, 168)] text-white text-lg font-bold shadow-[0_10px_25px_-5px_rgba(30,89,255,0.4)] hover:shadow-xl hover:-translate-y-1 transition-all"
+                     className="w-full px-10 py-4 rounded-full bg-gradient-to-r from-[rgb(157, 173, 190)] to-[rgb(139, 168, 168)] text-white text-lg font-bold shadow-soft-lg hover:shadow-xl hover:-translate-y-1 transition-all"
                    >
                      Continue to Dashboard
                    </button>
@@ -187,9 +187,9 @@ export const HomePage: React.FC = () => {
         }}
       >
         <div className="absolute inset-0 bg-[#E0F2FE]/50 md:hidden pointer-events-none z-0"></div>
-        <div className="absolute inset-0 bg-gradient-to-b from-[#E0F2FE]/40 via-transparent to-[#FDFCF8] pointer-events-none z-0"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#E0F2FE]/40 via-transparent to-[rgb(253, 252, 248)] pointer-events-none z-0"></div>
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[80%] bg-[radial-gradient(ellipse_at_center,_rgba(255,255,255,0.45)_0%,_rgba(255,255,255,0.1)_50%,_transparent_80%)] blur-3xl pointer-events-none z-0"></div>
-        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#FDFCF8] via-[#FDFCF8]/90 to-transparent pointer-events-none z-0"></div>
+        <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[rgb(253, 252, 248)] via-[rgb(253, 252, 248)]/90 to-transparent pointer-events-none z-0"></div>
 
         {/* NAVIGATION */}
         <nav className="relative z-50 flex items-center justify-between px-6 md:px-10 py-6 max-w-[1400px] mx-auto w-full">
@@ -217,7 +217,7 @@ export const HomePage: React.FC = () => {
               </div>
             </DropdownButton>
 
-            <a href="#" className="px-4 py-2 rounded-full hover:bg-white/40 transition-all duration-300">About Us</a>
+            <a href="#" className="px-4 py-2 rounded-full hover:bg-white/40 transition-smooth">About Us</a>
           </div>
 
           <div className="hidden lg:flex items-center gap-4 xl:gap-6">
@@ -230,7 +230,7 @@ export const HomePage: React.FC = () => {
             <button className="text-[rgb(139, 168, 168)] text-2xl hover:scale-110 transition-transform p-2 drop-shadow-sm">🛒</button>
             <button 
               onClick={() => navigate('/assessment')}
-              className="px-10 py-3.5 rounded-full bg-gradient-to-r from-[rgb(168, 181, 160)] to-[rgb(157, 173, 190)] text-white font-bold shadow-[0_4px_14px_0_rgba(0,118,255,0.39)] hover:shadow-[0_8px_25px_rgba(0,118,255,0.35)] hover:-translate-y-0.5 hover:brightness-105 transition-all duration-300 ease-out tracking-wide text-[1.05rem]"
+              className="px-10 py-3.5 rounded-full bg-gradient-calm text-white font-bold shadow-soft-md hover:shadow-soft-lg hover:-translate-y-0.5 hover:brightness-105 transition-smooth ease-out tracking-wide text-[1.05rem]"
             >
               Get Started
             </button>
@@ -257,7 +257,7 @@ export const HomePage: React.FC = () => {
         {/* MOBILE MENU */}
         <div 
           className={`
-            fixed inset-0 z-40 bg-[#FDFCF8] 
+            fixed inset-0 z-40 bg-[rgb(253, 252, 248)] 
             transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]
             lg:hidden flex flex-col
             ${isMobileMenuOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'}
@@ -298,7 +298,7 @@ export const HomePage: React.FC = () => {
                         setIsMobileMenuOpen(false);
                         navigate('/assessment');
                       }}
-                      className="w-full py-5 rounded-full bg-gradient-to-r from-[rgb(168, 181, 160)] to-[rgb(157, 173, 190)] text-white text-xl font-bold shadow-[0_10px_30px_-5px_rgba(30,89,255,0.4)] active:scale-[0.98] transition-transform"
+                      className="w-full py-5 rounded-full bg-gradient-calm text-white text-xl font-bold shadow-soft-lg active:scale-[0.98] transition-transform"
                     >
                       Get Started
                     </button>
@@ -320,7 +320,7 @@ export const HomePage: React.FC = () => {
 
             <button 
               onClick={() => navigate('/assessment')}
-              className="w-full md:w-auto px-10 md:px-16 py-5 md:py-6 text-[1.2rem] md:text-[1.3rem] rounded-full bg-gradient-to-r from-[rgb(168, 181, 160)] to-[rgb(157, 173, 190)] text-white font-bold shadow-[0_10px_30px_-5px_rgba(30,89,255,0.5)] hover:shadow-[0_20px_40px_-10px_rgba(30,89,255,0.6)] hover:-translate-y-1 hover:brightness-105 hover:scale-[1.02] transition-all duration-300 ease-out uppercase tracking-wider ring-4 ring-blue-500/10"
+              className="w-full md:w-auto px-10 md:px-16 py-5 md:py-6 text-[1.2rem] md:text-[1.3rem] rounded-full bg-gradient-calm text-white font-bold shadow-[0_10px_30px_-5px_rgba(30,89,255,0.5)] hover:shadow-[0_20px_40px_-10px_rgba(30,89,255,0.6)] hover:-translate-y-1 hover:brightness-105 hover:scale-[1.02] transition-smooth ease-out uppercase tracking-wider ring-4 ring-blue-500/10"
             >
               Get Started
             </button>
@@ -330,7 +330,7 @@ export const HomePage: React.FC = () => {
 
       {/* SOLUTIONS GRID */}
       <section className="py-24 px-6 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#FDFCF8] via-[#F4F9FF] to-[#F0F9FF] pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[rgb(253, 252, 248)] via-[#F4F9FF] to-[#F0F9FF] pointer-events-none"></div>
 
         <div className="max-w-[1280px] mx-auto relative z-10">
           <h2 className="reveal-on-scroll font-serif text-[2.8rem] md:text-[3.2rem] text-[rgb(139, 168, 168)] mb-16 text-center tracking-tight">
@@ -402,7 +402,7 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
             
-            <button className="self-start px-10 py-5 rounded-full bg-white text-[rgb(157, 173, 190)] font-bold text-lg border-2 border-[rgb(157, 173, 190)]/10 hover:border-[rgb(157, 173, 190)] hover:bg-[rgb(157, 173, 190)] hover:text-white transition-all duration-300 shadow-sm hover:shadow-lg">
+            <button className="self-start px-10 py-5 rounded-full bg-white text-[rgb(157, 173, 190)] font-bold text-lg border-2 border-[rgb(157, 173, 190)]/10 hover:border-[rgb(157, 173, 190)] hover:bg-[rgb(157, 173, 190)] hover:text-white transition-smooth shadow-sm hover:shadow-lg">
               Start Chatting Now
             </button>
           </div>
@@ -422,7 +422,7 @@ export const HomePage: React.FC = () => {
                 </div>
               </div>
             </div>
-             <button className="self-start px-10 py-5 rounded-full bg-white text-[#D97706] font-bold text-lg border-2 border-[#D97706]/10 hover:border-[#D97706] hover:bg-[#D97706] hover:text-white transition-all duration-300 shadow-sm hover:shadow-lg">
+             <button className="self-start px-10 py-5 rounded-full bg-white text-[#D97706] font-bold text-lg border-2 border-[#D97706]/10 hover:border-[#D97706] hover:bg-[#D97706] hover:text-white transition-smooth shadow-sm hover:shadow-lg">
               Meet Fluffy
             </button>
           </div>
@@ -458,7 +458,7 @@ export const HomePage: React.FC = () => {
                 <div className="absolute inset-0 rounded-full border border-blue-200/30 scale-150 animate-[ping_3s_linear_infinite]"></div>
                 <div className="absolute inset-0 rounded-full border border-blue-200/20 scale-125"></div>
                 
-                <div className="w-56 h-56 md:w-72 md:h-72 rounded-full bg-gradient-to-br from-[rgb(157, 173, 190)] to-[rgb(139, 168, 168)] flex items-center justify-center shadow-[0_30px_60px_-10px_rgba(30,89,255,0.4)] hover:scale-105 transition-transform duration-500 cursor-pointer group hover:shadow-[0_40px_80px_-10px_rgba(30,89,255,0.5)]">
+                <div className="w-56 h-56 md:w-72 md:h-72 rounded-full bg-gradient-to-br from-[rgb(157, 173, 190)] to-[rgb(139, 168, 168)] flex items-center justify-center shadow-soft-xl hover:scale-105 transition-transform duration-500 cursor-pointer group hover:shadow-[0_40px_80px_-10px_rgba(30,89,255,0.5)]">
                    <div className="w-0 h-0 border-t-[25px] border-t-transparent border-l-[45px] border-l-white border-b-[25px] border-b-transparent ml-4 group-hover:scale-110 transition-transform"></div>
                 </div>
               </div>
@@ -497,7 +497,7 @@ export const HomePage: React.FC = () => {
           <div className="flex flex-col items-center gap-6">
             <button 
               onClick={() => navigate('/assessment')}
-              className="px-20 py-7 rounded-full bg-gradient-to-r from-[rgb(168, 181, 160)] to-[rgb(157, 173, 190)] text-white text-xl font-bold shadow-[0_20px_40px_-10px_rgba(30,89,255,0.3)] hover:shadow-[0_30px_60px_-10px_rgba(30,89,255,0.4)] hover:-translate-y-1 hover:brightness-105 transition-all duration-300 ring-4 ring-blue-500/10"
+              className="px-20 py-7 rounded-full bg-gradient-calm text-white text-xl font-bold shadow-soft-lg hover:shadow-soft-xl hover:-translate-y-1 hover:brightness-105 transition-smooth ring-4 ring-blue-500/10"
             >
               Start Your Journey
             </button>
@@ -569,7 +569,7 @@ const DropdownButton: React.FC<{ title: string; children: React.ReactNode }> = (
       onMouseEnter={() => setIsOpen(true)}
       onMouseLeave={() => setIsOpen(false)}
     >
-      <button className="flex items-center gap-1.5 px-4 py-2 rounded-full hover:bg-white/50 transition-all duration-300 focus:outline-none">
+      <button className="flex items-center gap-1.5 px-4 py-2 rounded-full hover:bg-white/50 transition-smooth focus:outline-none">
         {title} 
         <span className={`text-[0.7rem] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
       </button>
@@ -577,7 +577,7 @@ const DropdownButton: React.FC<{ title: string; children: React.ReactNode }> = (
       <div 
         className={`
           absolute top-full left-0 w-72 pt-5
-          transition-all duration-300 origin-top-left z-50
+          transition-smooth origin-top-left z-50
           ${isOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 -translate-y-2 pointer-events-none'}
         `}
       >
