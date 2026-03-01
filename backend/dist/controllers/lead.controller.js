@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.purchaseMyTherapistLeadController = exports.getMyTherapistLeadsController = void 0;
+exports.confirmMyTherapistLeadPurchaseController = exports.initiateMyTherapistLeadPurchaseController = exports.purchaseMyTherapistLeadController = exports.getMyTherapistLeadsController = void 0;
 const error_middleware_1 = require("../middleware/error.middleware");
 const response_1 = require("../utils/response");
 const lead_service_1 = require("../services/lead.service");
@@ -25,3 +25,27 @@ const purchaseMyTherapistLeadController = async (req, res) => {
     (0, response_1.sendSuccess)(res, result, 'Lead purchased successfully');
 };
 exports.purchaseMyTherapistLeadController = purchaseMyTherapistLeadController;
+const initiateMyTherapistLeadPurchaseController = async (req, res) => {
+    const userId = getAuthUserId(req);
+    const leadId = String(req.params.id);
+    const result = await (0, lead_service_1.initiateMyTherapistLeadPurchase)(userId, leadId);
+    (0, response_1.sendSuccess)(res, result, 'Lead purchase payment initiated', 201);
+};
+exports.initiateMyTherapistLeadPurchaseController = initiateMyTherapistLeadPurchaseController;
+const confirmMyTherapistLeadPurchaseController = async (req, res) => {
+    const userId = getAuthUserId(req);
+    const leadId = String(req.params.id);
+    const razorpayOrderId = String(req.body.razorpayOrderId ?? '').trim();
+    const razorpayPaymentId = String(req.body.razorpayPaymentId ?? '').trim();
+    const razorpaySignature = String(req.body.razorpaySignature ?? '').trim();
+    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        throw new error_middleware_1.AppError('razorpayOrderId, razorpayPaymentId and razorpaySignature are required', 422);
+    }
+    const result = await (0, lead_service_1.confirmMyTherapistLeadPurchase)(userId, leadId, {
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature,
+    });
+    (0, response_1.sendSuccess)(res, result, 'Lead purchase confirmed');
+};
+exports.confirmMyTherapistLeadPurchaseController = confirmMyTherapistLeadPurchaseController;

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 async function fetchExportStatus(jobId: string) {
-  const res = await fetch(`/api/v1/therapist/dashboard/exports/${jobId}`);
+  const res = await fetch(`/api/v1/therapists/dashboard/exports/${jobId}`);
   if (!res.ok) throw new Error('Failed to fetch export status');
   return res.json();
 }

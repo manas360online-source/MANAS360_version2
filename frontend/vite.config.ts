@@ -11,9 +11,18 @@ export default defineConfig({
     allowedHosts: true, // ✅ CORRECT: Must be boolean true, not 'all'
     open: false,
     cors: true,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:5001',
+        changeOrigin: true,
+      },
+    },
     hmr: {
-      protocol: 'wss',
-      clientPort: 443,
+      // Use plain WebSocket on localhost during local development
+      protocol: 'ws',
+      host: 'localhost',
+      port: 3000,
+      clientPort: 3000,
     },
   },
   build: {

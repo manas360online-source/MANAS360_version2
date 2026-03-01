@@ -179,17 +179,17 @@ A comprehensive **7-file integration test suite** has been created for the MANAS
 ### Testing Framework
 - **Jest** - Test runner and assertion library
 - **Supertest** - HTTP endpoint testing
-- **MongoMemoryServer** - In-memory isolated MongoDB
+- **PostgreSQLFixture** - In-memory isolated PostgreSQL
 
 ### Mocking & Utilities
 - **JWT** - Token generation for auth tests
 - **S3 Mock** - File upload simulation (no AWS calls)
-- **Mongoose** - ODM for database operations
+- **Prisma** - ODM for database operations
 
 ### Features Tested
 - ✅ REST API endpoints
 - ✅ Request validation & error handling
-- ✅ MongoDB queries & aggregations
+- ✅ PostgreSQL queries & aggregations
 - ✅ JWT authentication & RBAC
 - ✅ AES-256-GCM encryption/decryption
 - ✅ S3 file operations
@@ -300,7 +300,7 @@ mockS3Service.uploadFile.mockResolvedValueOnce({
 - Cross-user access prevention
 
 ⚡ **Performance Optimized**
-- MongoMemoryServer for fast isolation
+- PostgreSQLFixture for fast isolation
 - S3 mocking (no network calls)
 - Parallel test execution support
 - Clear separation of concerns

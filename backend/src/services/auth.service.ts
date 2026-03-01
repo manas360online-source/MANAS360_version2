@@ -2,9 +2,7 @@ import { randomBytes } from 'crypto';
 import { authenticator } from 'otplib';
 import { OAuth2Client } from 'google-auth-library';
 import { env } from '../config/env';
-import UserModel from '../models/user.model';
-import SessionModel from '../models/session.model';
-import AuditModel from '../models/audit.model';
+import { prisma } from '../config/db';
 import { AppError } from '../middleware/error.middleware';
 import {
 	hashOpaqueToken,
@@ -31,6 +29,7 @@ import type {
 } from '../types/auth.types';
 
 const googleClient = new OAuth2Client(env.googleClientId);
+const db = prisma as any;
 
 const nowPlusMinutes = (minutes: number): Date => new Date(Date.now() + minutes * 60 * 1000);
 
@@ -42,69 +41,50 @@ const audit = async (
 	meta: RequestMeta,
 	context: Record<string, unknown> = {},
 ): Promise<void> => {
-	await AuditModel.create({
+	await db.authAuditLog.create({
+		data: {
 		event,
 		status,
 		ipAddress: meta.ipAddress,
 		userAgent: meta.userAgent,
-		...context,
+			...(context.userId ? { userId: String(context.userId) } : {}),
+			email: typeof context.email === 'string' ? context.email : null,
+			phone: typeof context.phone === 'string' ? context.phone : null,
+			metadata: context,
+		},
 	});
 };
 
 const issueSessionTokens = async (userId: string, meta: RequestMeta) => {
-	const provisionalSessionId = randomBytes(12).toString('hex');
-	const tokenPair = createTokenPair(userId, provisionalSessionId);
-	const refreshTokenHash = hashOpaqueToken(tokenPair.refreshToken);
-
-	const session = await SessionModel.create({
-		userId,
-		jti: tokenPair.refreshJti,
-		refreshTokenHash,
-		expiresAt: nowPlusDays(7),
-		ipAddress: meta.ipAddress,
-		userAgent: meta.userAgent,
-		device: meta.device,
+	const createdSession = await db.authSession.create({
+		data: {
+			userId,
+			jti: randomBytes(24).toString('hex'),
+			refreshTokenHash: randomBytes(24).toString('hex'),
+			expiresAt: nowPlusDays(7),
+			ipAddress: meta.ipAddress,
+			userAgent: meta.userAgent,
+			device: meta.device,
+		},
+		select: { id: true },
 	});
 
-	await UserModel.updateOne(
-		{ _id: userId },
-		{
-			$push: {
-				refreshTokens: {
-					jti: tokenPair.refreshJti,
-					tokenHash: refreshTokenHash,
-					expiresAt: nowPlusDays(7),
-					sessionId: session._id,
-					ipAddress: meta.ipAddress,
-					userAgent: meta.userAgent,
-				},
-			},
+	const tokenPair = createTokenPair(userId, createdSession.id);
+	const refreshTokenHash = hashOpaqueToken(tokenPair.refreshToken);
+
+	await db.authSession.update({
+		where: { id: createdSession.id },
+		data: {
+			jti: tokenPair.refreshJti,
+			refreshTokenHash,
 		},
-	);
+	});
 
-	const finalTokenPair = createTokenPair(userId, String(session._id));
-	const finalRefreshTokenHash = hashOpaqueToken(finalTokenPair.refreshToken);
-
-	await SessionModel.updateOne(
-		{ _id: session._id },
-		{ jti: finalTokenPair.refreshJti, refreshTokenHash: finalRefreshTokenHash },
-	);
-
-	await UserModel.updateOne(
-		{ _id: userId, 'refreshTokens.jti': tokenPair.refreshJti },
-		{
-			$set: {
-				'refreshTokens.$.jti': finalTokenPair.refreshJti,
-				'refreshTokens.$.tokenHash': finalRefreshTokenHash,
-			},
-		},
-	);
-
-	return finalTokenPair;
+	return tokenPair;
 };
 
 export const registerWithEmail = async (input: RegisterEmailInput, meta: RequestMeta) => {
-	const existing = await UserModel.findOne({ email: input.email.toLowerCase() }).setOptions({ withDeleted: true });
+	const existing = await db.user.findUnique({ where: { email: input.email.toLowerCase() } });
 	if (existing) {
 		if (existing.isDeleted) {
 			throw new AppError('Account is deleted. Contact support to restore access.', 410);
@@ -117,18 +97,24 @@ export const registerWithEmail = async (input: RegisterEmailInput, meta: Request
 	const otp = generateNumericOtp();
 	const otpHash = await hashOtp(otp);
 
-	const user = await UserModel.create({
-		email: input.email.toLowerCase(),
-		passwordHash,
-		emailVerificationOtpHash: otpHash,
-		emailVerificationOtpExpiresAt: nowPlusMinutes(env.otpTtlMinutes),
-		provider: 'local',
+	const user = await db.user.create({
+		data: {
+			email: input.email.toLowerCase(),
+			passwordHash,
+			emailVerificationOtpHash: otpHash,
+			emailVerificationOtpExpiresAt: nowPlusMinutes(env.otpTtlMinutes),
+			provider: 'LOCAL',
+			role: 'PATIENT',
+			name: input.name ?? null,
+			firstName: input.name?.trim() || '',
+			lastName: '',
+		},
 	});
 
 	await audit('REGISTER_SUCCESS', 'success', meta, { userId: user._id, email: user.email });
 
 	return {
-		userId: String(user._id),
+		userId: String(user.id),
 		email: user.email,
 		message: 'Registration successful. Verify your email OTP.',
 		devOtp: env.nodeEnv !== 'production' ? otp : undefined,
@@ -136,7 +122,7 @@ export const registerWithEmail = async (input: RegisterEmailInput, meta: Request
 };
 
 export const verifyEmailOtp = async (input: VerifyEmailOtpInput): Promise<void> => {
-	const user = await UserModel.findOne({ email: input.email.toLowerCase() });
+	const user = await db.user.findUnique({ where: { email: input.email.toLowerCase() } });
 	if (!user || !user.emailVerificationOtpHash || !user.emailVerificationOtpExpiresAt) {
 		throw new AppError('Invalid verification request', 400);
 	}
@@ -150,14 +136,18 @@ export const verifyEmailOtp = async (input: VerifyEmailOtpInput): Promise<void> 
 		throw new AppError('Invalid OTP', 400);
 	}
 
-	user.emailVerified = true;
-	user.emailVerificationOtpHash = null;
-	user.emailVerificationOtpExpiresAt = null;
-	await user.save();
+	await db.user.update({
+		where: { id: user.id },
+		data: {
+			emailVerified: true,
+			emailVerificationOtpHash: null,
+			emailVerificationOtpExpiresAt: null,
+		},
+	});
 };
 
 export const registerWithPhone = async (input: RegisterPhoneInput) => {
-	const existing = await UserModel.findOne({ phone: input.phone }).setOptions({ withDeleted: true });
+	const existing = await db.user.findFirst({ where: { phone: input.phone } });
 	if (existing) {
 		if (existing.isDeleted) {
 			throw new AppError('Account is deleted. Contact support to restore access.', 410);
@@ -169,15 +159,20 @@ export const registerWithPhone = async (input: RegisterPhoneInput) => {
 	const otp = generateNumericOtp();
 	const otpHash = await hashOtp(otp);
 
-	const user = await UserModel.create({
-		phone: input.phone,
-		phoneVerificationOtpHash: otpHash,
-		phoneVerificationOtpExpiresAt: nowPlusMinutes(env.otpTtlMinutes),
-		provider: 'phone',
+	const user = await db.user.create({
+		data: {
+			phone: input.phone,
+			phoneVerificationOtpHash: otpHash,
+			phoneVerificationOtpExpiresAt: nowPlusMinutes(env.otpTtlMinutes),
+			provider: 'PHONE',
+			role: 'PATIENT',
+			firstName: '',
+			lastName: '',
+		},
 	});
 
 	return {
-		userId: String(user._id),
+		userId: String(user.id),
 		phone: user.phone,
 		message: 'Phone OTP sent.',
 		devOtp: env.nodeEnv !== 'production' ? otp : undefined,
@@ -185,7 +180,7 @@ export const registerWithPhone = async (input: RegisterPhoneInput) => {
 };
 
 export const verifyPhoneOtp = async (input: VerifyPhoneOtpInput): Promise<void> => {
-	const user = await UserModel.findOne({ phone: input.phone });
+	const user = await db.user.findFirst({ where: { phone: input.phone } });
 	if (!user || !user.phoneVerificationOtpHash || !user.phoneVerificationOtpExpiresAt) {
 		throw new AppError('Invalid verification request', 400);
 	}
@@ -199,17 +194,22 @@ export const verifyPhoneOtp = async (input: VerifyPhoneOtpInput): Promise<void> 
 		throw new AppError('Invalid OTP', 400);
 	}
 
-	user.phoneVerified = true;
-	user.phoneVerificationOtpHash = null;
-	user.phoneVerificationOtpExpiresAt = null;
-	await user.save();
+	await db.user.update({
+		where: { id: user.id },
+		data: {
+			phoneVerified: true,
+			phoneVerificationOtpHash: null,
+			phoneVerificationOtpExpiresAt: null,
+		},
+	});
 };
 
 const resolveUserByIdentifier = async (identifier: string) => {
 	const isEmail = identifier.includes('@');
-	return UserModel.findOne(isEmail ? { email: identifier.toLowerCase() } : { phone: identifier }).setOptions({
-		withDeleted: true,
-	});
+	if (isEmail) {
+		return db.user.findUnique({ where: { email: identifier.toLowerCase() } });
+	}
+	return db.user.findFirst({ where: { phone: identifier } });
 };
 
 export const loginWithPassword = async (input: LoginInput, meta: RequestMeta) => {
@@ -220,7 +220,7 @@ export const loginWithPassword = async (input: LoginInput, meta: RequestMeta) =>
 	}
 
 	if (user.isDeleted) {
-		await audit('LOGIN_FAILED', 'failure', meta, { email: input.identifier, userId: user._id });
+		await audit('LOGIN_FAILED', 'failure', meta, { email: input.identifier, userId: user.id });
 		throw new AppError('User account is deleted', 410);
 	}
 
@@ -230,15 +230,20 @@ export const loginWithPassword = async (input: LoginInput, meta: RequestMeta) =>
 
 	const validPassword = await verifyPassword(input.password, user.passwordHash);
 	if (!validPassword) {
-		user.failedLoginAttempts += 1;
+		const nextFailedAttempts = (user.failedLoginAttempts ?? 0) + 1;
+		const willLock = nextFailedAttempts >= env.maxLoginAttempts;
+		await db.user.update({
+			where: { id: user.id },
+			data: {
+				failedLoginAttempts: nextFailedAttempts,
+				lockUntil: willLock ? nowPlusMinutes(env.lockoutWindowMinutes) : user.lockUntil,
+			},
+		});
 
-		if (user.failedLoginAttempts >= env.maxLoginAttempts) {
-			user.lockUntil = nowPlusMinutes(env.lockoutWindowMinutes);
-			await audit('LOCKOUT_TRIGGERED', 'failure', meta, { userId: user._id, email: user.email });
+		if (willLock) {
+			await audit('LOCKOUT_TRIGGERED', 'failure', meta, { userId: user.id, email: user.email });
 		}
-
-		await user.save();
-		await audit('LOGIN_FAILED', 'failure', meta, { userId: user._id, email: user.email });
+		await audit('LOGIN_FAILED', 'failure', meta, { userId: user.id, email: user.email });
 		throw new AppError('Invalid credentials', 401);
 	}
 
@@ -248,17 +253,21 @@ export const loginWithPassword = async (input: LoginInput, meta: RequestMeta) =>
 		}
 	}
 
-	user.failedLoginAttempts = 0;
-	user.lockUntil = null;
-	user.lastLoginAt = new Date();
-	await user.save();
+	await db.user.update({
+		where: { id: user.id },
+		data: {
+			failedLoginAttempts: 0,
+			lockUntil: null,
+			lastLoginAt: new Date(),
+		},
+	});
 
-	const tokenPair = await issueSessionTokens(String(user._id), meta);
-	await audit('LOGIN_SUCCESS', 'success', meta, { userId: user._id, email: user.email, phone: user.phone });
+	const tokenPair = await issueSessionTokens(String(user.id), meta);
+	await audit('LOGIN_SUCCESS', 'success', meta, { userId: user.id, email: user.email, phone: user.phone });
 
 	return {
 		user: {
-			id: String(user._id),
+			id: String(user.id),
 			email: user.email,
 			phone: user.phone,
 			emailVerified: user.emailVerified,
@@ -284,30 +293,46 @@ export const loginWithGoogle = async (input: GoogleLoginInput, meta: RequestMeta
 		throw new AppError('Invalid Google token', 401);
 	}
 
-	let user = await UserModel.findOne({ $or: [{ googleId: payload.sub }, { email: payload.email?.toLowerCase() }] }).setOptions({ withDeleted: true });
+	let user = await db.user.findFirst({
+		where: {
+			OR: [{ googleId: payload.sub }, { email: payload.email?.toLowerCase() ?? undefined }],
+		},
+	});
 
 	if (user?.isDeleted) {
 		throw new AppError('User account is deleted', 410);
 	}
 
 	if (!user) {
-		user = await UserModel.create({
-			email: payload.email?.toLowerCase(),
-			emailVerified: payload.email_verified ?? false,
-			googleId: payload.sub,
-			provider: 'google',
+		user = await db.user.create({
+			data: {
+				email: payload.email?.toLowerCase() ?? null,
+				emailVerified: payload.email_verified ?? false,
+				googleId: payload.sub,
+				provider: 'GOOGLE',
+				role: 'PATIENT',
+				firstName: payload.given_name ?? '',
+				lastName: payload.family_name ?? '',
+				name: payload.name ?? null,
+			},
 		});
 	} else if (!user.googleId) {
-		user.googleId = payload.sub;
-		await user.save();
+		user = await db.user.update({
+			where: { id: user.id },
+			data: {
+				googleId: payload.sub,
+				provider: 'GOOGLE',
+				emailVerified: payload.email_verified ?? user.emailVerified,
+			},
+		});
 	}
 
-	const tokenPair = await issueSessionTokens(String(user._id), meta);
-	await audit('LOGIN_SUCCESS', 'success', meta, { userId: user._id, email: user.email });
+	const tokenPair = await issueSessionTokens(String(user.id), meta);
+	await audit('LOGIN_SUCCESS', 'success', meta, { userId: user.id, email: user.email });
 
 	return {
 		user: {
-			id: String(user._id),
+			id: String(user.id),
 			email: user.email,
 			phone: user.phone,
 			emailVerified: user.emailVerified,
@@ -322,25 +347,21 @@ export const refreshAuthTokens = async (input: RefreshInput, meta: RequestMeta) 
 	const payload = verifyRefreshToken(input.refreshToken);
 	const refreshTokenHash = hashOpaqueToken(input.refreshToken);
 
-	const session = await SessionModel.findOne({
-		_id: payload.sessionId,
-		jti: payload.jti,
-		refreshTokenHash,
-		revokedAt: null,
-		expiresAt: { $gt: new Date() },
+	const session = await db.authSession.findFirst({
+		where: {
+			id: payload.sessionId,
+			jti: payload.jti,
+			refreshTokenHash,
+			revokedAt: null,
+			expiresAt: { gt: new Date() },
+		},
 	});
 
 	if (!session) {
 		throw new AppError('Invalid refresh token', 401);
 	}
 
-	session.revokedAt = new Date();
-	await session.save();
-
-	await UserModel.updateOne(
-		{ _id: payload.sub, 'refreshTokens.jti': payload.jti },
-		{ $set: { 'refreshTokens.$.revokedAt': new Date() } },
-	);
+	await db.authSession.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
 
 	const tokenPair = await issueSessionTokens(payload.sub, meta);
 	await audit('TOKEN_REFRESHED', 'success', meta, { userId: payload.sub });
@@ -349,11 +370,7 @@ export const refreshAuthTokens = async (input: RefreshInput, meta: RequestMeta) 
 };
 
 export const logoutSession = async (sessionId: string, userId: string, meta: RequestMeta): Promise<void> => {
-	await SessionModel.updateOne({ _id: sessionId, userId }, { revokedAt: new Date() });
-	await UserModel.updateOne(
-		{ _id: userId, 'refreshTokens.sessionId': sessionId },
-		{ $set: { 'refreshTokens.$.revokedAt': new Date() } },
-	);
+	await db.authSession.updateMany({ where: { id: sessionId, userId }, data: { revokedAt: new Date() } });
 
 	await audit('LOGOUT', 'success', meta, { userId });
 };
@@ -363,11 +380,15 @@ export const requestPasswordReset = async (input: PasswordResetRequestInput, met
 
 	if (user) {
 		const otp = generateNumericOtp();
-		user.passwordResetOtpHash = await hashOtp(otp);
-		user.passwordResetOtpExpiresAt = nowPlusMinutes(env.resetOtpTtlMinutes);
-		await user.save();
+		await db.user.update({
+			where: { id: user.id },
+			data: {
+				passwordResetOtpHash: await hashOtp(otp),
+				passwordResetOtpExpiresAt: nowPlusMinutes(env.resetOtpTtlMinutes),
+			},
+		});
 
-		await audit('PASSWORD_RESET_REQUESTED', 'success', meta, { userId: user._id, email: user.email });
+		await audit('PASSWORD_RESET_REQUESTED', 'success', meta, { userId: user.id, email: user.email });
 
 		return {
 			message: 'Password reset OTP sent.',
@@ -393,27 +414,30 @@ export const resetPassword = async (input: PasswordResetInput, meta: RequestMeta
 		throw new AppError('Invalid OTP', 400);
 	}
 
-	user.passwordHash = await hashPassword(input.newPassword);
-	user.passwordResetOtpHash = null;
-	user.passwordResetOtpExpiresAt = null;
-	user.refreshTokens.splice(0, user.refreshTokens.length);
-	await user.save();
+	await db.user.update({
+		where: { id: user.id },
+		data: {
+			passwordHash: await hashPassword(input.newPassword),
+			passwordResetOtpHash: null,
+			passwordResetOtpExpiresAt: null,
+			passwordChangedAt: new Date(),
+		},
+	});
 
-	await SessionModel.updateMany({ userId: user._id, revokedAt: null }, { revokedAt: new Date() });
-	await audit('PASSWORD_RESET_SUCCESS', 'success', meta, { userId: user._id, email: user.email });
+	await db.authSession.updateMany({ where: { userId: user.id, revokedAt: null }, data: { revokedAt: new Date() } });
+	await audit('PASSWORD_RESET_SUCCESS', 'success', meta, { userId: user.id, email: user.email });
 };
 
 export const setupMfa = async (input: MfaSetupInput) => {
-	const user = await UserModel.findById(input.userId);
+	const user = await db.user.findUnique({ where: { id: input.userId } });
 	if (!user) {
 		throw new AppError('User not found', 404);
 	}
 
 	const secret = authenticator.generateSecret();
-	user.mfaSecret = secret;
-	await user.save();
+	await db.user.update({ where: { id: user.id }, data: { mfaSecret: secret } });
 
-	const otpauthUrl = authenticator.keyuri(user.email ?? user.phone ?? String(user._id), env.mfaIssuer, secret);
+	const otpauthUrl = authenticator.keyuri(user.email ?? user.phone ?? String(user.id), env.mfaIssuer, secret);
 
 	return {
 		secret,
@@ -422,7 +446,7 @@ export const setupMfa = async (input: MfaSetupInput) => {
 };
 
 export const verifyAndEnableMfa = async (input: MfaVerifyInput): Promise<void> => {
-	const user = await UserModel.findById(input.userId);
+	const user = await db.user.findUnique({ where: { id: input.userId } });
 	if (!user || !user.mfaSecret) {
 		throw new AppError('MFA setup not initialized', 400);
 	}
@@ -431,19 +455,21 @@ export const verifyAndEnableMfa = async (input: MfaVerifyInput): Promise<void> =
 		throw new AppError('Invalid MFA verification code', 400);
 	}
 
-	user.mfaEnabled = true;
-	await user.save();
+	await db.user.update({ where: { id: user.id }, data: { mfaEnabled: true } });
 };
 
 export const getActiveSessions = async (userId: string) => {
-	const sessions = await SessionModel.find({
-		userId,
-		revokedAt: null,
-		expiresAt: { $gt: new Date() },
-	}).sort({ createdAt: -1 });
+	const sessions = await db.authSession.findMany({
+		where: {
+			userId,
+			revokedAt: null,
+			expiresAt: { gt: new Date() },
+		},
+		orderBy: { createdAt: 'desc' },
+	});
 
 	return sessions.map((session) => ({
-		id: String(session._id),
+		id: String(session.id),
 		ipAddress: session.ipAddress,
 		userAgent: session.userAgent,
 		device: session.device,
@@ -453,11 +479,10 @@ export const getActiveSessions = async (userId: string) => {
 };
 
 export const revokeSession = async (userId: string, sessionId: string): Promise<void> => {
-	const session = await SessionModel.findOne({ _id: sessionId, userId, revokedAt: null });
+	const session = await db.authSession.findFirst({ where: { id: sessionId, userId, revokedAt: null } });
 	if (!session) {
 		throw new AppError('Session not found', 404);
 	}
 
-	session.revokedAt = new Date();
-	await session.save();
+	await db.authSession.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
 };

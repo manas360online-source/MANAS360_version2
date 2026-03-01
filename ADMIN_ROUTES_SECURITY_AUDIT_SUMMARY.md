@@ -48,7 +48,7 @@
 - Deleted accounts immediately blocked (410 Gone)
 
 ### 5. Input Validation ✅
-- Route parameters validated (ObjectId format)
+- Route parameters validated (UUID format)
 - Query parameters validated and sanitized
 - Pagination limits enforced (max 50 items)
 
@@ -337,13 +337,13 @@ Response
 
 2. **GET /api/v1/admin/users/:id**
    - Get single user by ID
-   - Parameter: userId (ObjectId)
+   - Parameter: userId (UUID)
    - Requires: Admin role
    - Returns: User details
 
 3. **PATCH /api/v1/admin/therapists/:id/verify**
    - Verify therapist credentials
-   - Parameter: therapistId (ObjectId)
+   - Parameter: therapistId (UUID)
    - Requires: Admin role
    - Returns: Updated therapist profile
 

@@ -1,25 +1,19 @@
-import UserModel from '../models/user.model';
+import { prisma } from '../config/db';
 import { AppError } from '../middleware/error.middleware';
 import type { ChangePasswordPayload, ProfileUpdatePayload } from '../utils/constants';
 import { deleteFileFromS3, getSignedProfilePhotoUrl, uploadProfilePhotoToS3 } from './s3.service';
 import { hashPassword, verifyPassword } from '../utils/hash';
-import SessionModel from '../models/session.model';
-import { Types } from 'mongoose';
 
-const safeUserProjection = {
-	passwordHash: 0,
-	emailVerificationOtpHash: 0,
-	emailVerificationOtpExpiresAt: 0,
-	phoneVerificationOtpHash: 0,
-	phoneVerificationOtpExpiresAt: 0,
-	passwordResetOtpHash: 0,
-	passwordResetOtpExpiresAt: 0,
-	mfaSecret: 0,
-	refreshTokens: 0,
-} as const;
+const db = prisma as any;
+
+const uuidRegex =
+	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const assertUserIsActive = async (userId: string): Promise<void> => {
-	const user = await UserModel.findById(userId).select('_id isDeleted').lean();
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { id: true, isDeleted: true },
+	});
 
 	if (!user) {
 		throw new AppError('User not found', 404);
@@ -33,13 +27,35 @@ const assertUserIsActive = async (userId: string): Promise<void> => {
 export const getMyProfile = async (userId: string) => {
 	await assertUserIsActive(userId);
 
-	const user = await UserModel.findOne({ _id: userId, isDeleted: false }, safeUserProjection).lean();
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: {
+			id: true,
+			name: true,
+			email: true,
+			phone: true,
+			role: true,
+			provider: true,
+			emailVerified: true,
+			phoneVerified: true,
+			firstName: true,
+			lastName: true,
+			profileImageKey: true,
+			profileImageUrl: true,
+			createdAt: true,
+			updatedAt: true,
+		},
+	});
 
 	if (!user) {
 		throw new AppError('User not found', 404);
 	}
 
-	return user;
+	return {
+		...user,
+		role: String(user.role).toLowerCase(),
+		provider: String(user.provider).toLowerCase(),
+	};
 };
 
 export const updateMyProfile = async (userId: string, payload: ProfileUpdatePayload) => {
@@ -52,13 +68,14 @@ export const updateMyProfile = async (userId: string, payload: ProfileUpdatePayl
 	}
 
 	if (payload.phone !== undefined) {
-		const existingPhoneOwner = await UserModel.findOne({
-			phone: payload.phone,
-			isDeleted: false,
-			_id: { $ne: userId },
-		})
-			.select('_id')
-			.lean();
+		const existingPhoneOwner = await db.user.findFirst({
+			where: {
+				phone: payload.phone,
+				isDeleted: false,
+				id: { not: userId },
+			},
+			select: { id: true },
+		});
 
 		if (existingPhoneOwner) {
 			throw new AppError('Phone is already in use', 409);
@@ -71,35 +88,43 @@ export const updateMyProfile = async (userId: string, payload: ProfileUpdatePayl
 		throw new AppError('No allowed fields provided for update', 400);
 	}
 
-	const updatedUser = await UserModel.findOneAndUpdate(
-		{ _id: userId, isDeleted: false },
-		{
-			$set: updatePayload,
-			$currentDate: { updatedAt: true },
-		},
-		{ new: true, runValidators: true, projection: safeUserProjection, timestamps: true },
-	).lean();
+	const nameParts = (updatePayload.name ?? '').trim().split(/\s+/).filter(Boolean);
+	const nextFirstName = updatePayload.name !== undefined ? nameParts.slice(0, 1).join(' ') : undefined;
+	const nextLastName = updatePayload.name !== undefined ? nameParts.slice(1).join(' ') : undefined;
 
-	if (!updatedUser) {
+	const updatedUser = await db.user.updateMany({
+		where: { id: userId, isDeleted: false },
+		data: {
+			...(updatePayload.name !== undefined
+				? {
+					name: updatePayload.name,
+					firstName: nextFirstName ?? '',
+					lastName: nextLastName ?? '',
+				}
+				: {}),
+			...(updatePayload.phone !== undefined ? { phone: updatePayload.phone } : {}),
+		},
+	});
+
+	if (updatedUser.count === 0) {
 		throw new AppError('User not found', 404);
 	}
 
-	return updatedUser;
+	return getMyProfile(userId);
 };
 
 export const softDeleteMyAccount = async (userId: string): Promise<void> => {
-	const updated = await UserModel.updateOne(
-		{ _id: userId, isDeleted: false },
-		{
-			$set: {
-				isDeleted: true,
-				deletedAt: new Date(),
-				refreshTokens: [],
-			},
+	const updated = await db.user.updateMany({
+		where: { id: userId, isDeleted: false },
+		data: {
+			isDeleted: true,
+			deletedAt: new Date(),
 		},
-	);
+	});
 
-	if (updated.matchedCount === 0) {
+	await db.authSession.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } });
+
+	if (updated.count === 0) {
 		throw new AppError('User not found', 404);
 	}
 };
@@ -110,9 +135,10 @@ export const uploadMyProfilePhoto = async (
 ) => {
 	await assertUserIsActive(userId);
 
-	const existingUser = await UserModel.findOne({ _id: userId, isDeleted: false })
-		.select('_id profileImageKey')
-		.lean();
+	const existingUser = await db.user.findFirst({
+		where: { id: userId, isDeleted: false },
+		select: { id: true, profileImageKey: true },
+	});
 
 	if (!existingUser) {
 		throw new AppError('User not found', 404);
@@ -128,26 +154,22 @@ export const uploadMyProfilePhoto = async (
 		await deleteFileFromS3(existingUser.profileImageKey);
 	}
 
-	const updatedUser = await UserModel.findOneAndUpdate(
-		{ _id: userId, isDeleted: false },
-		{
-			$set: {
-				profileImageKey: uploaded.objectKey,
-				profileImageUrl: uploaded.objectUrl,
-			},
-			$currentDate: { updatedAt: true },
+	const updated = await db.user.updateMany({
+		where: { id: userId, isDeleted: false },
+		data: {
+			profileImageKey: uploaded.objectKey,
+			profileImageUrl: uploaded.objectUrl,
 		},
-		{ new: true, runValidators: true, projection: safeUserProjection, timestamps: true },
-	).lean();
+	});
 
-	if (!updatedUser) {
+	if (updated.count === 0) {
 		throw new AppError('User not found', 404);
 	}
 
 	const signedProfileImageUrl = await getSignedProfilePhotoUrl(uploaded.objectKey);
 
 	return {
-		...updatedUser,
+		...(await getMyProfile(userId)),
 		signedProfileImageUrl,
 	};
 };
@@ -155,7 +177,10 @@ export const uploadMyProfilePhoto = async (
 export const changeMyPassword = async (userId: string, payload: ChangePasswordPayload): Promise<void> => {
 	await assertUserIsActive(userId);
 
-	const user = await UserModel.findOne({ _id: userId, isDeleted: false }).select('_id passwordHash');
+	const user = await db.user.findFirst({
+		where: { id: userId, isDeleted: false },
+		select: { id: true, passwordHash: true },
+	});
 
 	if (!user) {
 		throw new AppError('User not found', 404);
@@ -177,95 +202,78 @@ export const changeMyPassword = async (userId: string, payload: ChangePasswordPa
 
 	const newPasswordHash = await hashPassword(payload.newPassword);
 
-	await UserModel.updateOne(
-		{ _id: userId, isDeleted: false },
-		{
-			$set: {
-				passwordHash: newPasswordHash,
-				passwordChangedAt: new Date(),
-				refreshTokens: [],
-			},
-			$currentDate: { updatedAt: true },
+	await db.user.updateMany({
+		where: { id: userId, isDeleted: false },
+		data: {
+			passwordHash: newPasswordHash,
+			passwordChangedAt: new Date(),
 		},
-	);
+	});
 
-	await SessionModel.updateMany(
-		{ userId, revokedAt: null, expiresAt: { $gt: new Date() } },
-		{ $set: { revokedAt: new Date() } },
-	);
+	await db.authSession.updateMany({
+		where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+		data: { revokedAt: new Date() },
+	});
 };
 
 export const listMyActiveSessions = async (userId: string, currentSessionId?: string) => {
 	await assertUserIsActive(userId);
 
-	const sessions = await SessionModel.find({
-		userId,
-		revokedAt: null,
-		expiresAt: { $gt: new Date() },
-	})
-		.sort({ createdAt: -1 })
-		.lean();
+	const sessions = await db.authSession.findMany({
+		where: {
+			userId,
+			revokedAt: null,
+			expiresAt: { gt: new Date() },
+		},
+		orderBy: { createdAt: 'desc' },
+	});
 
 	return sessions.map((session) => ({
-		id: String(session._id),
+		id: String(session.id),
 		device: session.device,
 		ipAddress: session.ipAddress,
 		createdAt: session.createdAt,
 		lastActiveAt: session.lastActiveAt,
-		isCurrent: currentSessionId ? String(session._id) === currentSessionId : false,
+		isCurrent: currentSessionId ? String(session.id) === currentSessionId : false,
 	}));
 };
 
 export const invalidateMySession = async (userId: string, sessionId: string): Promise<void> => {
 	await assertUserIsActive(userId);
 
-	if (!Types.ObjectId.isValid(sessionId)) {
+	if (!uuidRegex.test(sessionId)) {
 		throw new AppError('Invalid session id', 400);
 	}
 
-	const session = await SessionModel.findOne({
-		_id: sessionId,
-		userId,
-		revokedAt: null,
-		expiresAt: { $gt: new Date() },
+	const session = await db.authSession.findFirst({
+		where: {
+			id: sessionId,
+			userId,
+			revokedAt: null,
+			expiresAt: { gt: new Date() },
+		},
 	});
 
 	if (!session) {
 		throw new AppError('Session not found', 404);
 	}
 
-	session.revokedAt = new Date();
-	await session.save();
-
-	await UserModel.updateOne(
-		{ _id: userId, 'refreshTokens.sessionId': session._id },
-		{ $set: { 'refreshTokens.$.revokedAt': new Date() } },
-	);
+	await db.authSession.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
 };
 
 export const restoreDeletedUserAccount = async (userId: string) => {
-	const restoredUser = await UserModel.findOneAndUpdate(
-		{ _id: userId, isDeleted: true },
-		{
-			$set: {
-				isDeleted: false,
-				deletedAt: null,
-			},
-			$currentDate: { updatedAt: true },
+	const restored = await db.user.updateMany({
+		where: { id: userId, isDeleted: true },
+		data: {
+			isDeleted: false,
+			deletedAt: null,
 		},
-		{
-			new: true,
-			runValidators: true,
-			projection: safeUserProjection,
-			timestamps: true,
-			withDeleted: true,
-		},
-	).lean();
+	});
 
-	if (!restoredUser) {
+	if (restored.count === 0) {
 		throw new AppError('Deleted user not found', 404);
 	}
 
-	return restoredUser;
+	return getMyProfile(userId);
 };
 

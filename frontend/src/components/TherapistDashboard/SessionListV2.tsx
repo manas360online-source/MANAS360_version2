@@ -1,9 +1,9 @@
-import React, { useRef, useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { listMyTherapistSessions } from '../../api/therapistSessions.api';
 import { TherapistSession, Paged } from '../../types/session.types';
 import { useDashboardDispatch, useDashboardState } from '../../context/dashboardContext';
-import SessionQuickActions from '../Therapist/SessionQuickActions';
+import SessionQuickActions from '../therapist/SessionQuickActions';
 import Sidebar from '../Sidebar/Sidebar';
 import VirtualizedSessionList from '../VirtualizedSessionList';
 
@@ -106,8 +106,6 @@ const SessionListV2: React.FC<Props> = ({ pageSize = 20, onOpen: onOpenProp }) =
       staleTime: 1000 * 30,
     }
   );
-
-  const listRef = useRef<HTMLDivElement | null>(null);
 
   const allItems = useMemo(() => infinite.data?.pages.flatMap((p: any) => p.items ?? []) ?? [], [infinite.data]);
 

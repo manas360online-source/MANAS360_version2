@@ -30,7 +30,7 @@ components:
         _id:
           type: string
           format: uuid
-          description: MongoDB ObjectId
+          description: PostgreSQL UUID
         email:
           type: string
           format: email
@@ -279,14 +279,14 @@ paths:
   /users/{id}:
     get:
       summary: Get single user
-      description: Retrieve details of a single user by their MongoDB ObjectId
+      description: Retrieve details of a single user by their PostgreSQL UUID
       operationId: getUser
       tags:
         - Users
       parameters:
         - name: id
           in: path
-          description: User MongoDB ObjectId
+          description: User PostgreSQL UUID
           required: true
           schema:
             type: string
@@ -344,7 +344,7 @@ paths:
       parameters:
         - name: id
           in: path
-          description: Therapist Profile MongoDB ObjectId
+          description: Therapist Profile PostgreSQL UUID
           required: true
           schema:
             type: string

@@ -1,11 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.requireMinimumRole = exports.requirePermission = exports.requireAdminRole = exports.requireTherapistRole = exports.requirePatientRole = exports.requireRole = exports.clearRoleCache = exports.roleHierarchy = void 0;
-const user_model_1 = __importDefault(require("../models/user.model"));
+const db_1 = require("../config/db");
 const error_middleware_1 = require("./error.middleware");
+const db = db_1.prisma;
 /**
  * Role hierarchy for logical grouping
  * Useful for future permission inheritance
@@ -57,19 +55,22 @@ const getUserRole = async (userId) => {
         return { role: cached.role, isDeleted: cached.isDeleted };
     }
     // Query database if not in cache
-    const user = await user_model_1.default.findById(userId).select('_id role isDeleted').lean();
+    const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { role: true },
+    });
     if (!user) {
         return null;
     }
     // Cache the result
     roleCache.set(userId, {
-        role: user.role,
+        role: String(user.role).toLowerCase(),
         timestamp: Date.now(),
-        isDeleted: user.isDeleted || false,
+        isDeleted: false,
     });
     return {
-        role: user.role,
-        isDeleted: user.isDeleted || false,
+        role: String(user.role).toLowerCase(),
+        isDeleted: false,
     };
 };
 /**

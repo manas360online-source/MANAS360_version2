@@ -1,6 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
-import AutoSizer from 'react-virtualized-auto-sizer';
+import React from 'react';
+import { FixedSizeList as List } from 'react-window';
 
 type VirtualizedSessionListProps<T> = {
   items: T[];
@@ -10,7 +9,7 @@ type VirtualizedSessionListProps<T> = {
 };
 
 function VirtualizedSessionList<T>({ items, itemHeight, renderItem, className }: VirtualizedSessionListProps<T>) {
-  const Row = ({ index, style }: ListChildComponentProps) => {
+  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
     const item = items[index];
     return (
       <div style={style} className="px-0">
@@ -24,13 +23,9 @@ function VirtualizedSessionList<T>({ items, itemHeight, renderItem, className }:
 
   return (
     <div style={{ height: estimatedHeight }} className={className}>
-      <AutoSizer>
-        {({ height, width }) => (
-          <List height={height} itemCount={items.length} itemSize={itemHeight} width={width}>
-            {Row}
-          </List>
-        )}
-      </AutoSizer>
+      <List height={estimatedHeight} itemCount={items.length} itemSize={itemHeight} width="100%">
+        {Row}
+      </List>
     </div>
   );
 }

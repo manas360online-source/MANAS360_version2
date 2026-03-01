@@ -1,6 +1,6 @@
 import React from 'react';
 import { useDashboardState, useDashboardDispatch } from '../../context/dashboardContext';
-import SessionQuickActions from '../Therapist/SessionQuickActions';
+import SessionQuickActions from '../therapist/SessionQuickActions';
 import ExportButton from '../ExportButton';
 import { useQuery } from '@tanstack/react-query';
 import { getMyTherapistSessionDetail } from '../../api/therapistSessions.api';

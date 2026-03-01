@@ -259,7 +259,7 @@ All documentation follows:
 - **API Spec:** OpenAPI 3.0 standard
 - **Response Format:** JSON with `{success, data, message}`
 - **Timestamps:** ISO 8601 UTC format
-- **IDs:** MongoDB ObjectId 24-character hex strings
+- **IDs:** PostgreSQL UUID 24-character hex strings
 - **Pagination:** Page/limit model with metadata
 - **Authentication:** Bearer JWT tokens
 - **Rate Limiting:** Per-IP rate limits

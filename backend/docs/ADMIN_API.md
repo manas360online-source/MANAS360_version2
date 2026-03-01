@@ -7,6 +7,12 @@
 
 ---
 
+## Migration Status (March 2026)
+
+Admin APIs are migrated to Prisma/PostgreSQL. The therapist verification endpoint is temporarily unavailable and returns `501 Not Implemented` until therapist profile models are finalized in Prisma.
+
+---
+
 ## Table of Contents
 
 1. [Authentication & Authorization](#authentication--authorization)
@@ -34,7 +40,7 @@ Authorization: Bearer <jwt_token>
 
 - **Required Role**: `admin`
 - **Token Claims**:
-  - `userId`: MongoDB ObjectId of authenticated user
+  - `userId`: Authenticated user identifier
   - `sessionId`: Active session identifier
   - `jti`: JWT ID (unique identifier)
 
@@ -199,7 +205,7 @@ Retrieve details of a single user by ID.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | string | ✅ Yes | User MongoDB ObjectId (24-char hex string) |
+| `id` | string | ✅ Yes | User identifier |
 
 **Example Request**:
 ```http
@@ -212,7 +218,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 | Parameter | Rule |
 |-----------|------|
-| `id` | Must be valid MongoDB ObjectId format (24 hex chars) |
+| `id` | Must be a non-empty user ID string |
 
 #### Success Response
 
@@ -241,7 +247,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 | Status | Scenario |
 |--------|----------|
-| **400** | Invalid user ID format (not ObjectId) |
+| **400** | Invalid user ID format |
 | **401** | Missing or invalid authentication token |
 | **403** | Non-admin user attempting access |
 | **404** | User with given ID doesn't exist |
@@ -253,6 +259,8 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 Verify a therapist's credentials and mark profile as verified.
 
+> Current status: This endpoint is temporarily unavailable and returns `501 Not Implemented`.
+
 #### Request
 
 **Method**: `PATCH`  
@@ -262,7 +270,7 @@ Verify a therapist's credentials and mark profile as verified.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | string | ✅ Yes | Therapist Profile MongoDB ObjectId |
+| `id` | string | ✅ Yes | Therapist profile identifier |
 
 **Request Body**: None (empty body)
 
@@ -275,51 +283,24 @@ Content-Type: application/json
 Content-Length: 0
 ```
 
-#### Validation Rules
+#### Current Response
 
-| Parameter | Rule |
-|-----------|------|
-| `id` | Must be valid MongoDB ObjectId format (24 hex chars) |
-
-#### Success Response
-
-**Status Code**: `200 OK`
+**Status Code**: `501 Not Implemented`
 
 ```json
 {
-  "success": true,
-  "data": {
-    "_id": "607f1f77bcf86cd799439022",
-    "userId": "507f1f77bcf86cd799439011",
-    "licenseNumber": "LIC-TH-12345",
-    "specializations": ["anxiety", "depression", "stress"],
-    "yearsOfExperience": 8,
-    "isVerified": true,
-    "verifiedAt": "2024-02-27T14:25:30Z",
-    "verifiedBy": "507f1f77bcf86cd799439010",
-    "bio": "Certified mental health therapist...",
-    "createdAt": "2024-01-20T08:15:00Z",
-    "updatedAt": "2024-02-27T14:25:30Z"
-  },
-  "message": "Therapist verified successfully"
+  "success": false,
+  "message": "Therapist verification temporarily unavailable during Prisma migration"
 }
 ```
-
-#### Behavior
-
-- Sets `isVerified` to `true`
-- Records `verifiedAt` timestamp (current UTC time)
-- Records `verifiedBy` with admin user's ID
-- **Idempotent**: Can be called multiple times safely; already verified therapists remain unchanged
 
 #### Error Responses
 
 | Status | Scenario |
 |--------|----------|
-| **400** | Invalid therapist profile ID format |
 | **401** | Missing or invalid authentication token |
 | **403** | Non-admin user attempting access |
-| **404** | Therapist profile doesn't exist |
+| **501** | Endpoint temporarily disabled during Prisma migration |
 | **410** | Authenticated admin account has been deleted |
 
 ---

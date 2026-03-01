@@ -1,5 +1,7 @@
 # Admin User Management API - Quick Reference
 
+> Migration note (March 2026): Admin user-listing endpoints are Prisma-backed. Therapist verification endpoint is temporarily unavailable (`501`) until therapist profile Prisma models are completed.
+
 ## Endpoints Summary
 
 | Endpoint | Method | Auth | Purpose |
@@ -120,7 +122,7 @@ curl -X GET "https://api.manas360.com/api/v1/admin/users/507f1f77bcf86cd79943901
 
 ```typescript
 {
-  _id: ObjectId;
+  id: string;
   name?: string;
   email?: string;
   phone?: string;
@@ -368,7 +370,7 @@ logger.audit({
 ### 403 Forbidden
 - User must have `role === 'admin'`
 - Check user is not deleted: `isDeleted === false`
-- Verify in database: `db.users.findOne({email: "admin@example.com"})`
+- Verify in database via Prisma/PostgreSQL admin user record
 
 ### 422 Unprocessable Entity
 - Check query param values are valid
@@ -379,13 +381,13 @@ logger.audit({
 
 ### 404 Not Found
 - User doesn't exist
-- Check ObjectId format is valid
-- Try: `curl -X GET /api/v1/admin/users | jq '.data.data[0]._id'`
+- Check user ID value is correct
+- Try: `curl -X GET /api/v1/admin/users | jq '.data.data[0].id'`
 
 ### 500 Server Error
 - Check server logs
 - Verify database connection
-- Ensure MongoDB is running
+- Ensure PostgreSQL is running and reachable
 
 ---
 

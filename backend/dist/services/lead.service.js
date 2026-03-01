@@ -1,186 +1,319 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.purchaseMyTherapistLead = exports.getMyTherapistLeads = void 0;
+exports.purchaseMyTherapistLead = exports.confirmMyTherapistLeadPurchase = exports.initiateMyTherapistLeadPurchase = exports.getMyTherapistLeads = void 0;
 const error_middleware_1 = require("../middleware/error.middleware");
-const user_model_1 = __importDefault(require("../models/user.model"));
-const therapist_model_1 = __importDefault(require("../models/therapist.model"));
-const patient_model_1 = __importDefault(require("../models/patient.model"));
-const lead_model_1 = __importDefault(require("../models/lead.model"));
+const db_1 = require("../config/db");
+const env_1 = require("../config/env");
 const pagination_1 = require("../utils/pagination");
-const mongoose_1 = __importDefault(require("mongoose"));
-const therapist_wallet_model_1 = __importDefault(require("../models/therapist-wallet.model"));
-const wallet_transaction_model_1 = __importDefault(require("../models/wallet-transaction.model"));
+const razorpay_service_1 = require("./razorpay.service");
 const crypto_1 = require("crypto");
+const db = db_1.prisma;
 const assertTherapistUser = async (userId) => {
-    const user = await user_model_1.default.findById(userId).select('_id role isDeleted').lean();
+    const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, role: true } });
     if (!user) {
         throw new error_middleware_1.AppError('User not found', 404);
     }
-    if (user.isDeleted) {
-        throw new error_middleware_1.AppError('User account is deleted', 410);
-    }
-    if (user.role !== 'therapist') {
+    if (String(user.role) !== 'THERAPIST') {
         throw new error_middleware_1.AppError('Therapist role required', 403);
     }
 };
 const getMyTherapistLeads = async (userId, query) => {
     await assertTherapistUser(userId);
-    const therapistProfile = await therapist_model_1.default.findOne({ userId }).select('_id').lean();
-    if (!therapistProfile) {
-        throw new error_middleware_1.AppError('Therapist profile not found. Please create profile first.', 404);
-    }
     const pagination = (0, pagination_1.normalizePagination)({ page: query.page, limit: query.limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 50 });
-    const filter = {
-        therapistId: therapistProfile._id,
-    };
-    if (query.status) {
-        filter.status = query.status;
-    }
-    const [totalItems, leads] = await Promise.all([
-        lead_model_1.default.countDocuments(filter),
-        lead_model_1.default.find(filter)
-            .select({
-            patientId: 1,
-            issueType: 1,
-            assessmentSeverity: 1,
-            leadPrice: 1,
-            status: 1,
-            matchedAt: 1,
-            purchasedAt: 1,
-        })
-            .sort({ matchedAt: -1 })
-            .skip(pagination.skip)
-            .limit(pagination.limit)
-            .lean(),
-    ]);
-    const patientIds = [...new Set(leads.map((lead) => String(lead.patientId)))];
-    const patientProfiles = await patient_model_1.default.find({
-        _id: { $in: patientIds },
-    })
-        .select({ _id: 1, age: 1, gender: 1 })
-        .lean();
-    const patientMap = new Map(patientProfiles.map((profile) => [String(profile._id), profile]));
-    const items = leads.map((lead) => {
-        const patientProfile = patientMap.get(String(lead.patientId));
-        return {
-            leadId: String(lead._id),
-            patientSummary: {
-                patientId: String(lead.patientId),
-                age: patientProfile?.age ?? null,
-                gender: patientProfile?.gender ?? null,
-            },
-            issueType: lead.issueType,
-            assessmentSeverity: lead.assessmentSeverity,
-            leadPrice: lead.leadPrice,
-            leadStatus: lead.status,
-            matchedAt: lead.matchedAt,
-            purchasedAt: lead.purchasedAt,
+    const where = query.status
+        ? query.status === 'available'
+            ? { OR: [{ status: 'AVAILABLE', providerId: null }, { status: 'AVAILABLE', providerId: userId, paymentStatus: 'INITIATED' }] }
+            : { status: 'PURCHASED', providerId: userId }
+        : {
+            OR: [
+                { status: 'AVAILABLE', providerId: null },
+                { status: 'AVAILABLE', providerId: userId, paymentStatus: 'INITIATED' },
+                { status: 'PURCHASED', providerId: userId },
+            ],
         };
-    });
+    const [total, leads] = await Promise.all([
+        db.lead.count({ where }),
+        db.lead.findMany({
+            where,
+            orderBy: [{ createdAt: 'desc' }],
+            skip: pagination.skip,
+            take: pagination.limit,
+            select: {
+                id: true,
+                status: true,
+                paymentStatus: true,
+                razorpayOrderId: true,
+                matchScore: true,
+                amountMinor: true,
+                currency: true,
+                previewData: true,
+                patientAcceptanceUntil: true,
+                providerContactedAt: true,
+                purchasedAt: true,
+                createdAt: true,
+                patientId: true,
+                providerId: true,
+            },
+        }),
+    ]);
     return {
-        items,
-        meta: (0, pagination_1.buildPaginationMeta)(totalItems, pagination),
+        items: leads,
+        meta: (0, pagination_1.buildPaginationMeta)(total, pagination),
     };
 };
 exports.getMyTherapistLeads = getMyTherapistLeads;
+const initiateMyTherapistLeadPurchase = async (userId, leadId) => {
+    await assertTherapistUser(userId);
+    const now = new Date();
+    const reservedLead = await db.$transaction(async (tx) => {
+        const lead = await tx.lead.findUnique({
+            where: { id: leadId },
+            select: {
+                id: true,
+                status: true,
+                providerId: true,
+                amountMinor: true,
+                currency: true,
+                expiresAt: true,
+                patientAcceptanceUntil: true,
+                paymentStatus: true,
+                razorpayOrderId: true,
+            },
+        });
+        if (!lead) {
+            throw new error_middleware_1.AppError('Lead not found', 404, { leadId });
+        }
+        if (lead.status === 'PURCHASED' && lead.providerId === userId) {
+            return lead;
+        }
+        if (lead.status !== 'AVAILABLE') {
+            throw new error_middleware_1.AppError('Lead is no longer available', 409, { leadId, status: lead.status });
+        }
+        if (lead.patientAcceptanceUntil && lead.patientAcceptanceUntil < now) {
+            throw new error_middleware_1.AppError('Lead acceptance window has expired', 409, { leadId });
+        }
+        if (lead.expiresAt && lead.expiresAt < now) {
+            throw new error_middleware_1.AppError('Lead has expired', 409, { leadId });
+        }
+        if (lead.providerId && lead.providerId !== userId) {
+            throw new error_middleware_1.AppError('Lead is reserved by another therapist', 409, { leadId });
+        }
+        const reserve = await tx.lead.updateMany({
+            where: {
+                id: leadId,
+                status: 'AVAILABLE',
+                OR: [{ providerId: null }, { providerId: userId }],
+            },
+            data: {
+                providerId: userId,
+                paymentStatus: 'INITIATED',
+                idempotencyKey: (0, crypto_1.randomUUID)(),
+            },
+        });
+        if (reserve.count !== 1) {
+            throw new error_middleware_1.AppError('Lead is no longer available', 409, { leadId });
+        }
+        return tx.lead.findUnique({
+            where: { id: leadId },
+            select: {
+                id: true,
+                amountMinor: true,
+                currency: true,
+                providerId: true,
+                status: true,
+                paymentStatus: true,
+                razorpayOrderId: true,
+            },
+        });
+    });
+    if (!reservedLead) {
+        throw new error_middleware_1.AppError('Unable to reserve lead for payment', 409, { leadId });
+    }
+    if (!env_1.env.razorpayKeyId || !env_1.env.razorpayKeySecret) {
+        throw new error_middleware_1.AppError('Razorpay credentials are not configured', 500);
+    }
+    const order = await (0, razorpay_service_1.createRazorpayOrder)({
+        amountMinor: Number(reservedLead.amountMinor),
+        currency: String(reservedLead.currency ?? 'INR'),
+        receipt: `lead_${Date.now()}_${leadId.slice(0, 8)}`,
+        notes: {
+            leadId,
+            therapistId: userId,
+            flow: 'lead_purchase',
+        },
+    });
+    await db.lead.updateMany({
+        where: {
+            id: leadId,
+            providerId: userId,
+            status: 'AVAILABLE',
+            paymentStatus: 'INITIATED',
+        },
+        data: {
+            razorpayOrderId: order.id,
+        },
+    });
+    return {
+        leadId,
+        paymentRequired: true,
+        amountMinor: Number(reservedLead.amountMinor),
+        currency: String(reservedLead.currency ?? 'INR'),
+        razorpayOrderId: order.id,
+        razorpayKeyId: env_1.env.razorpayKeyId,
+    };
+};
+exports.initiateMyTherapistLeadPurchase = initiateMyTherapistLeadPurchase;
+const confirmMyTherapistLeadPurchase = async (userId, leadId, input) => {
+    await assertTherapistUser(userId);
+    if (!env_1.env.razorpayKeySecret) {
+        throw new error_middleware_1.AppError('Razorpay credentials are not configured', 500);
+    }
+    const isValid = (0, razorpay_service_1.verifyRazorpayPaymentSignature)(input.razorpayOrderId, input.razorpayPaymentId, input.razorpaySignature, env_1.env.razorpayKeySecret);
+    if (!isValid) {
+        throw new error_middleware_1.AppError('Invalid Razorpay payment signature', 401);
+    }
+    const now = new Date();
+    const result = await db.$transaction(async (tx) => {
+        const lead = await tx.lead.findUnique({
+            where: { id: leadId },
+            select: {
+                id: true,
+                status: true,
+                providerId: true,
+                amountMinor: true,
+                currency: true,
+                paymentStatus: true,
+                razorpayOrderId: true,
+                razorpayPaymentId: true,
+            },
+        });
+        if (!lead) {
+            throw new error_middleware_1.AppError('Lead not found', 404, { leadId });
+        }
+        if (lead.providerId !== userId) {
+            throw new error_middleware_1.AppError('Lead is reserved by another therapist', 403, { leadId });
+        }
+        if (lead.razorpayOrderId !== input.razorpayOrderId) {
+            throw new error_middleware_1.AppError('Order id does not match reserved lead', 409, { leadId });
+        }
+        if (lead.status === 'PURCHASED' && lead.paymentStatus === 'CAPTURED') {
+            return {
+                id: lead.id,
+                status: lead.status,
+                paymentStatus: lead.paymentStatus,
+                providerId: lead.providerId,
+                amountMinor: lead.amountMinor,
+                currency: lead.currency,
+                razorpayOrderId: lead.razorpayOrderId,
+                razorpayPaymentId: lead.razorpayPaymentId,
+            };
+        }
+        const update = await tx.lead.updateMany({
+            where: {
+                id: leadId,
+                providerId: userId,
+                status: 'AVAILABLE',
+                paymentStatus: 'INITIATED',
+                razorpayOrderId: input.razorpayOrderId,
+            },
+            data: {
+                status: 'PURCHASED',
+                paymentStatus: 'CAPTURED',
+                razorpayPaymentId: input.razorpayPaymentId,
+                paymentCapturedAt: now,
+                purchasedAt: now,
+            },
+        });
+        if (update.count !== 1) {
+            throw new error_middleware_1.AppError('Lead payment confirmation conflict', 409, { leadId });
+        }
+        await tx.revenueLedger.create({
+            data: {
+                type: 'CONTENT',
+                grossAmountMinor: lead.amountMinor,
+                platformCommissionMinor: lead.amountMinor,
+                providerShareMinor: 0,
+                taxAmountMinor: 0,
+                currency: lead.currency,
+                referenceId: `lead:${lead.id}`,
+            },
+        });
+        return tx.lead.findUnique({
+            where: { id: leadId },
+            select: {
+                id: true,
+                status: true,
+                paymentStatus: true,
+                providerId: true,
+                purchasedAt: true,
+                amountMinor: true,
+                currency: true,
+                razorpayOrderId: true,
+                razorpayPaymentId: true,
+            },
+        });
+    });
+    return {
+        lead: result,
+    };
+};
+exports.confirmMyTherapistLeadPurchase = confirmMyTherapistLeadPurchase;
 const purchaseMyTherapistLead = async (userId, leadId) => {
     await assertTherapistUser(userId);
-    const therapistProfile = await therapist_model_1.default.findOne({ userId }).select('_id').lean();
-    if (!therapistProfile) {
-        throw new error_middleware_1.AppError('Therapist profile not found. Please create profile first.', 404);
-    }
-    const session = await mongoose_1.default.startSession();
-    try {
-        let result = null;
-        await session.withTransaction(async () => {
-            const lead = await lead_model_1.default.findOne({ _id: leadId, therapistId: therapistProfile._id })
-                .select({ _id: 1, status: 1, leadPrice: 1 })
-                .session(session)
-                .lean();
-            if (!lead) {
-                throw new error_middleware_1.AppError('Lead not found', 404);
-            }
-            if (lead.status !== 'available') {
-                throw new error_middleware_1.AppError('Lead is not available for purchase', 409, {
-                    conflictType: 'lead_not_available',
-                });
-            }
-            const wallet = await therapist_wallet_model_1.default.findOne({ therapistId: therapistProfile._id })
-                .select({ _id: 1, balance: 1, currency: 1 })
-                .session(session)
-                .lean();
-            if (!wallet) {
-                throw new error_middleware_1.AppError('Therapist wallet not found', 404);
-            }
-            if (wallet.balance < lead.leadPrice) {
-                throw new error_middleware_1.AppError('Insufficient wallet balance', 409, {
-                    conflictType: 'insufficient_balance',
-                });
-            }
-            const walletUpdate = await therapist_wallet_model_1.default.updateOne({
-                _id: wallet._id,
-                balance: { $gte: lead.leadPrice },
-            }, {
-                $inc: { balance: -lead.leadPrice },
-            }, { session });
-            if (walletUpdate.modifiedCount !== 1) {
-                throw new error_middleware_1.AppError('Insufficient wallet balance', 409, {
-                    conflictType: 'insufficient_balance',
-                });
-            }
-            const purchasedAt = new Date();
-            const leadUpdate = await lead_model_1.default.updateOne({
-                _id: lead._id,
-                status: 'available',
-            }, {
-                $set: {
-                    status: 'purchased',
-                    purchasedAt,
-                },
-            }, { session });
-            if (leadUpdate.modifiedCount !== 1) {
-                throw new error_middleware_1.AppError('Lead is not available for purchase', 409, {
-                    conflictType: 'lead_not_available',
-                });
-            }
-            const transactionReferenceId = `LTX-${Date.now()}-${(0, crypto_1.randomUUID)().slice(0, 8).toUpperCase()}`;
-            const [transaction] = await wallet_transaction_model_1.default.create([
-                {
-                    walletId: wallet._id,
-                    therapistId: therapistProfile._id,
-                    leadId: lead._id,
-                    type: 'lead_purchase',
-                    amount: lead.leadPrice,
-                    currency: wallet.currency,
-                    status: 'success',
-                    referenceId: transactionReferenceId,
-                    description: 'Lead purchase debit',
-                },
-            ], { session });
-            const updatedWallet = await therapist_wallet_model_1.default.findById(wallet._id)
-                .select({ balance: 1 })
-                .session(session)
-                .lean();
-            result = {
-                leadId: String(lead._id),
-                leadStatus: 'purchased',
-                leadPrice: lead.leadPrice,
-                walletBalanceAfter: updatedWallet?.balance ?? Math.max(0, wallet.balance - lead.leadPrice),
-                transactionId: String(transaction._id),
-                transactionReferenceId,
-                purchasedAt,
-            };
+    const now = new Date();
+    const purchasedLead = await db.$transaction(async (tx) => {
+        const lead = await tx.lead.findUnique({
+            where: { id: leadId },
+            select: {
+                id: true,
+                status: true,
+                providerId: true,
+                expiresAt: true,
+                patientAcceptanceUntil: true,
+            },
         });
-        if (!result) {
-            throw new error_middleware_1.AppError('Unable to purchase lead', 500);
+        if (!lead) {
+            throw new error_middleware_1.AppError('Lead not found', 404, { leadId });
         }
-        return result;
-    }
-    finally {
-        await session.endSession();
-    }
+        if (lead.status !== 'AVAILABLE') {
+            throw new error_middleware_1.AppError('Lead is no longer available', 409, { leadId, status: lead.status });
+        }
+        if (lead.patientAcceptanceUntil && lead.patientAcceptanceUntil < now) {
+            throw new error_middleware_1.AppError('Lead acceptance window has expired', 409, { leadId });
+        }
+        if (lead.expiresAt && lead.expiresAt < now) {
+            throw new error_middleware_1.AppError('Lead has expired', 409, { leadId });
+        }
+        const updateResult = await tx.lead.updateMany({
+            where: {
+                id: leadId,
+                status: 'AVAILABLE',
+                providerId: null,
+            },
+            data: {
+                providerId: userId,
+                status: 'PURCHASED',
+                purchasedAt: now,
+            },
+        });
+        if (updateResult.count !== 1) {
+            throw new error_middleware_1.AppError('Lead is no longer available', 409, { leadId });
+        }
+        return tx.lead.findUnique({
+            where: { id: leadId },
+            select: {
+                id: true,
+                status: true,
+                providerId: true,
+                purchasedAt: true,
+                amountMinor: true,
+                currency: true,
+                patientId: true,
+            },
+        });
+    });
+    return {
+        lead: purchasedLead,
+    };
 };
 exports.purchaseMyTherapistLead = purchaseMyTherapistLead;

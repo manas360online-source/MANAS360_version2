@@ -1,6 +1,6 @@
 # Admin API Integration Tests
 
-Quality assurance test suite for Admin API endpoints using Jest, Supertest, and MongoMemoryServer.
+Quality assurance test suite for Admin API endpoints using Jest, Supertest, and PostgreSQLFixture.
 
 ## 📋 Quick Start
 
@@ -128,12 +128,12 @@ backend/
 ## 🔧 Helper Files
 
 ### db-setup.ts
-Database setup helper with MongoMemoryServer and fixture factories:
+Database setup helper with PostgreSQLFixture and fixture factories:
 
 ```typescript
 // Database management
-connectToTestDB()           // Start in-memory MongoDB
-disconnectFromTestDB()      // Stop MongoDB and cleanup
+connectToTestDB()           // Start in-memory PostgreSQL
+disconnectFromTestDB()      // Stop PostgreSQL and cleanup
 clearTestDB()               // Clear all collections between tests
 
 // Fixture factories
@@ -207,7 +207,7 @@ describe('GET /admin/users - List Users', () => {
 - Proper error messages
 
 ### ✅ Input Validation (400)
-- Invalid ObjectId format
+- Invalid UUID format
 - Invalid query parameters
 - Out-of-range pagination
 
@@ -222,7 +222,7 @@ describe('GET /admin/users - List Users', () => {
 
 ### [MOCK_STRATEGY.md](./MOCK_STRATEGY.md)
 Complete guide to the mocking approach:
-- MongoMemoryServer setup
+- PostgreSQLFixture setup
 - JWT token generation
 - Supertest request patterns
 - Factory functions for test data
@@ -249,7 +249,7 @@ Detailed test coverage breakdown:
 
 ### Execution Time
 ```
-First run:  5-7 seconds  (MongoMemoryServer download + cache)
+First run:  5-7 seconds  (PostgreSQLFixture download + cache)
 Subsequent: 2-3 seconds  (full test suite)
 Per test:   50-200ms    (average)
 ```
@@ -265,15 +265,15 @@ Per test:   50-200ms    (average)
 ## 🐛 Troubleshooting
 
 ### Tests fail to start
-**Issue**: MongoMemoryServer download fails
+**Issue**: PostgreSQLFixture download fails
 ```bash
 # Solution: Set offline mode or manual binary path
-export MONGOD_SKIP_SHA1=true
+export TEST_DB_OFFLINE_MODE=true
 npm test
 ```
 
-### "Cannot connect to MongoDB" error
-**Issue**: MongoMemoryServer process not starting
+### "Cannot connect to PostgreSQL" error
+**Issue**: PostgreSQLFixture process not starting
 ```bash
 # Solution: Check Node.js version (requires 12+)
 node --version
@@ -283,7 +283,7 @@ node --version
 **Issue**: Previous test process didn't cleanup
 ```bash
 # Solution: Kill lingering processes
-lsof -i :27017  # MongoDB default port
+lsof -i :27017  # PostgreSQL default port
 kill -9 <PID>
 ```
 
@@ -433,8 +433,8 @@ npm test -- tests/admin/admin.integration.test.ts --coverage
 
 ### Common Questions
 
-**Q: Why MongoMemoryServer instead of mocking?**
-A: Real MongoDB tests verify actual query behavior and data persistence.
+**Q: Why PostgreSQLFixture instead of mocking?**
+A: Real PostgreSQL tests verify actual query behavior and data persistence.
 
 **Q: Why Supertest instead of direct API calls?**
 A: Supertest runs in-process without network overhead while testing real middleware.
@@ -443,7 +443,7 @@ A: Supertest runs in-process without network overhead while testing real middlew
 A: Jest's async/await support handles this automatically. No special setup needed.
 
 **Q: Can I run tests in parallel?**
-A: Yes, with separate MongoDB instances. Update jest config: `maxWorkers: 4`
+A: Yes, with separate PostgreSQL instances. Update jest config: `maxWorkers: 4`
 
 **Q: How do I debug a failing test?**
 A: Use `node --inspect-brk node_modules/.bin/jest --runInBand --testNamePattern="Test name"`
@@ -470,7 +470,7 @@ A: Use `node --inspect-brk node_modules/.bin/jest --runInBand --testNamePattern=
 
 - [Jest Documentation](https://jestjs.io/)
 - [Supertest Guide](https://github.com/visionmedia/supertest)
-- [MongoMemoryServer Docs](https://github.com/nodkz/mongodb-memory-server)
+- [PostgreSQLFixture Docs](https://github.com/nodkz/postgresql-test-fixture)
 - [Node.js Testing Best Practices](https://nodejs.org/en/docs/guides/testing/)
 
 ---

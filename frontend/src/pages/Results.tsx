@@ -123,7 +123,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ data }) => {
           </div>
           
           <button 
-            onClick={() => navigate('/home')} 
+            onClick={() => navigate('/')} 
             className="
               w-full py-5
               bg-wellness-surface border-2 border-calm-sage/20 text-wellness-text

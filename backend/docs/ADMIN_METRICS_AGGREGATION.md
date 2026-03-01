@@ -1,7 +1,7 @@
 # Admin Metrics - Aggregation Pipelines & Performance Guide
 
 ## Overview
-This document details the MongoDB aggregation strategies used in the metrics endpoint and provides performance optimization guidelines.
+This document details the PostgreSQL aggregation strategies used in the metrics endpoint and provides performance optimization guidelines.
 
 ---
 
@@ -18,7 +18,7 @@ getMetricsController
     ↓
 getMetrics() Service Function
     ↓
-6 Parallel MongoDB Operations
+6 Parallel PostgreSQL Operations
     ├─ CountDocuments: totalUsers
     ├─ CountDocuments: totalTherapists
     ├─ CountDocuments: verifiedTherapists
@@ -41,10 +41,10 @@ JSON Response: 200 OK
 **Execution Time**: 10-50ms (with index)
 
 ```javascript
-// MongoDB Native
+// PostgreSQL Native
 db.users.countDocuments({ isDeleted: false })
 
-// Mongoose TypeScript
+// Prisma TypeScript
 await UserModel.countDocuments({ isDeleted: false })
 ```
 
@@ -380,7 +380,7 @@ Speedup Factor = 235ms / 75ms = 3.13x ✨
 
 ### ✅ Index Creation Commands
 
-Run these in MongoDB:
+Run these in PostgreSQL:
 
 ```javascript
 // Users Collection

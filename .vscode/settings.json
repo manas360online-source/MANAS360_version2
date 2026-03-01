@@ -1,5 +1,8 @@
 {
   "files.associations": {
-    "prisma/migrations/**/*.sql": "sql"
-  }
+    "*.sql": "postgresql",
+    "prisma/migrations/**/*.sql": "postgresql",
+    "backend/prisma/migrations/**/*.sql": "postgresql"
+  },
+  "mssql.intelliSense.enableErrorChecking": false
 }

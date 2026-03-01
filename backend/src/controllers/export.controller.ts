@@ -1,7 +1,15 @@
 import { Request, Response } from 'express';
-import { getAuthUserId } from '../utils/auth';
+import { AppError } from '../middleware/error.middleware';
 import { exportQueue } from '../jobs/export.worker';
 import { prisma } from '../config/db';
+
+const getAuthUserId = (req: Request): string => {
+  const userId = req.auth?.userId;
+  if (!userId) {
+    throw new AppError('Authentication required', 401);
+  }
+  return userId;
+};
 
 export const getExportStatusController = async (req: Request, res: Response): Promise<void> => {
   const userId = getAuthUserId(req);

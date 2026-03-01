@@ -1,32 +1,27 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.db = exports.getDatabaseStatus = exports.disconnectDatabase = exports.connectDatabase = void 0;
-const mongoose_1 = __importDefault(require("mongoose"));
+exports.getDatabaseStatus = exports.disconnectDatabase = exports.connectDatabase = exports.prisma = void 0;
+const client_1 = require("@prisma/client");
 const env_1 = require("./env");
 let isConnected = false;
-mongoose_1.default.set('strictQuery', true);
+exports.prisma = new client_1.PrismaClient();
 const connectDatabase = async () => {
-    if (isConnected) {
+    if (isConnected)
         return;
+    // Prisma connects lazily; a simple test query ensures the client can connect
+    if (env_1.env.databaseUrl) {
+        await exports.prisma.$connect();
     }
-    await mongoose_1.default.connect(env_1.env.mongoUri);
     isConnected = true;
 };
 exports.connectDatabase = connectDatabase;
 const disconnectDatabase = async () => {
-    if (!isConnected) {
+    if (!isConnected)
         return;
-    }
-    await mongoose_1.default.disconnect();
+    await exports.prisma.$disconnect();
     isConnected = false;
 };
 exports.disconnectDatabase = disconnectDatabase;
-const getDatabaseStatus = () => ({
-    isConnected,
-});
+const getDatabaseStatus = () => ({ isConnected });
 exports.getDatabaseStatus = getDatabaseStatus;
-exports.db = mongoose_1.default;
-exports.default = exports.db;
+exports.default = exports.prisma;

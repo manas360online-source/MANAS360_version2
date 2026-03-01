@@ -7,6 +7,34 @@
 
 ---
 
+## Migration Status (March 2026)
+
+Backend runtime is now Prisma-first. Some therapist endpoints are intentionally returning `501 Not Implemented` until matching Prisma models are added.
+
+### Temporarily Unavailable (`501`)
+
+- `POST /api/v1/therapists/profile`
+- `GET /api/v1/therapists/me/profile`
+- `POST /api/v1/therapists/me/documents`
+- `GET /api/v1/therapists/me/leads`
+- `POST /api/v1/therapists/me/leads/:id/purchase`
+- `GET /api/v1/therapists/me/earnings`
+- `POST /api/v1/therapists/me/sessions/:id/responses/:responseId/notes`
+- `GET /api/v1/therapists/me/sessions/:id/responses/:responseId/notes`
+- `GET /api/v1/therapists/me/sessions/:id/responses/:responseId/notes/:noteId`
+- `PUT /api/v1/therapists/me/sessions/:id/responses/:responseId/notes/:noteId`
+- `DELETE /api/v1/therapists/me/sessions/:id/responses/:responseId/notes/:noteId`
+
+### Available (Prisma-backed)
+
+- Session booking/history/detail/status endpoints under `/api/v1/therapists/me/sessions`
+- Session-level encrypted note endpoint: `POST /api/v1/therapists/me/sessions/:id/notes`
+- Export endpoint: `GET /api/v1/therapists/me/sessions/:id/export`
+
+Refer to [backend/PRISMA_REENABLE_CHECKLIST.md](PRISMA_REENABLE_CHECKLIST.md) for re-enable tasks.
+
+---
+
 ## Table of Contents
 
 1. [Authentication](#authentication)

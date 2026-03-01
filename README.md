@@ -316,7 +316,7 @@ paths:
 				'200':
 					description: Session invalidated
 				'422':
-					description: Invalid ObjectId
+					description: Invalid UUID
 				'404':
 					description: Session not found
 

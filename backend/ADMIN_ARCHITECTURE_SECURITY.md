@@ -52,7 +52,7 @@
 ┌──────────────────────────▼──────────────────────────────────────┐
 │ Model Layer (UserModel)                                         │
 │ ┌──────────────────────────────────────────────────────────────┐│
-│ │ Query MongoDB Collection: users                              ││
+│ │ Query PostgreSQL Collection: users                              ││
 │ │ Filter: { role, isDeleted }                                  ││
 │ │ Projection: { passwordHash: 0, tokens: 0, ... }              ││
 │ │ Sort: { createdAt: -1 }                                      ││
@@ -61,7 +61,7 @@
 └──────────────────────────┬──────────────────────────────────────┘
                            │
 ┌──────────────────────────▼──────────────────────────────────────┐
-│ MongoDB Database                                                │
+│ PostgreSQL Database                                                │
 │ ┌──────────────────────────────────────────────────────────────┐│
 │ │ Collection: users                                            ││
 │ │ Documents returned with SAFE PROJECTION                      ││
@@ -238,8 +238,8 @@ Query Validation:
 
 Path Parameter Validation:
 ├─ id (required)
-│  ├─ Rule: isMongoId()
-│  ├─ Error: "id must be a valid MongoDB ObjectId"
+│  ├─ Rule: isUUID()
+│  ├─ Error: "id must be a valid PostgreSQL UUID"
 │  └─ Protection: Rejects malformed IDs early, prevents DB errors
 
 Validation Result:
@@ -249,7 +249,7 @@ Validation Result:
 
 ### 4. Data Projection (Field-Level Security)
 
-**Mechanism**: MongoDB projection to exclude sensitive fields
+**Mechanism**: PostgreSQL projection to exclude sensitive fields
 
 ```typescript
 // NEVER returned to client
@@ -271,7 +271,7 @@ Excluded Fields:
 
 // Always returned
 Included Fields:
-├─ _id, name, email, phone
+├─ id, name, email, phone
 ├─ role, provider
 ├─ emailVerified, phoneVerified
 ├─ mfaEnabled (boolean, not secret)
@@ -382,7 +382,7 @@ Result: ✅ BLOCKED
 
 ### 2. SQL/NoSQL Injection
 
-**Threat**: Attacker tries to manipulate database query
+**Threat**: Attacker tries to manipulate SQL query
 
 ```
 Attack Attempt 1: Role Injection
@@ -422,7 +422,7 @@ Authorization: Bearer [admin-token]
 Response Defense:
 ├─ Service calls: UserModel.findById(userId, safeProjection)
 ├─ Projection: { passwordHash: 0, refreshTokens: 0, mfaSecret: 0, ... }
-├─ MongoDB removes fields before returning
+├─ PostgreSQL removes fields before returning
 └─ Admin receives user WITHOUT sensitive fields
 
 Response Body:
@@ -430,7 +430,7 @@ Response Body:
   "success": true,
   "message": "User fetched successfully",
   "data": {
-    "_id": "507f1f77bcf86cd799439011",
+      "id": "507f1f77-bc8f-6cd7-9943-901100000001",
     "name": "John Doe",
     "email": "john@example.com",
     "role": "patient",
@@ -470,7 +470,7 @@ Defense:
 ├─ Validation: page.isInt({ min: 1 })
 ├─ Query: skip = (999999-1) * 50 = 49,999,950
 ├─ Database: Scans & skips BUT returns 0 results
-├─ Cost: High, but mongo will skip efficiently with indexing
+├─ Cost: High, but PostgreSQL can still paginate efficiently with indexing
 └─ Recommendation: Implement rate limit on admin endpoints
 
 Mitigation Strategy:
@@ -573,7 +573,7 @@ Result: ✅ ACCEPTABLE - Feature + Audit Logging
    ```
 
 3. **Encryption at Rest**
-   - Ensure MongoDB encryption enabled
+   - Ensure PostgreSQL encryption enabled
    - Sensitive fields further obscured (optional)
 
 4. **Encryption in Transit**
@@ -635,7 +635,7 @@ validateAdminListUsersQuery: RequestHandler[]
 └─ Extracts to: req.validatedAdminListUsersQuery
 
 validateAdminGetUserIdParam: RequestHandler[]
-├─ Validates: MongoDB ObjectId format
+├─ Validates: PostgreSQL UUID format
 └─ Extracts to: req.validatedUserId
 
 // Service
@@ -667,7 +667,7 @@ getUserController(req, res)
 
 ### Query Performance
 
-**List Users Query** (MongoDB aggregation pipeline) timing:
+**List Users Query** (PostgreSQL aggregation pipeline) timing:
 
 ```
 Scenario: 100,000 users in database
@@ -686,7 +686,7 @@ Result: ~35,000 patient users
    └─ In-memory sort (10 docs): ~0.1ms
 
 3. Projection (excluded 6 fields)
-   ├─ MongoDB-side: ~1ms
+   ├─ PostgreSQL-side: ~1ms
    └─ Reduces network payload by ~20%
 
 4. Count Documents
@@ -711,7 +711,7 @@ Scenario: Querying by _id (primary key)
    └─ Direct lookup: ~0.5ms
 
 2. Projection (exclude 6 fields)
-   ├─ MongoDB applies projection: ~0.2ms
+   ├─ PostgreSQL applies projection: ~0.2ms
    └─ Reduces payload by ~20%
 
 3. Return Single Document
@@ -738,7 +738,7 @@ userSchema.index({
   createdAt: -1     // For sorting
 });
 
-// This allows MongoDB to:
+// This allows PostgreSQL to:
 // 1. Use index to find { isDeleted: false, role: 'patient' }
 // 2. Use same index for sorting by createdAt DESC
 // 3. Skip pagination offset efficiently

@@ -26,7 +26,7 @@ GET /api/v1/admin/users/:id      Get single user details by ID
 - Data projection (removes sensitive fields)
 
 **Model** (UserModel)
-- MongoDB schema & queries
+- PostgreSQL schema & queries
 - Automatic soft-delete handling
 - Field-level indexing
 
@@ -210,7 +210,7 @@ export default router;
 
 ### Data Projection (Sensitive Field Exclusion)
 - **Why**: Admins should never see password hashes, OTPs, or MFA secrets
-- **How**: MongoDB projection excludes fields at query time
+- **How**: PostgreSQL projection excludes fields at query time
 - **Benefit**: Can't accidentally expose sensitive data even if projection is forgotten
 - **Implementation**: Fields excluded in database query, not in application code
 
@@ -434,7 +434,7 @@ export default router;
 - Index on `role` field
 - Index on `isDeleted` field
 - Compound index: `{ isDeleted, role, createdAt }`
-- Lean queries (no Mongoose overhead)
+- Lean queries (no Prisma overhead)
 - Parallel count + find queries
 
 ---

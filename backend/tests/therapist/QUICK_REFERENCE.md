@@ -211,10 +211,10 @@ expect(res2.body.note.content).toBe('Confidential info');
 npm test -- --timeout=30000 tests/therapist/
 ```
 
-### ❌ MongoDB connection error
+### ❌ PostgreSQL connection error
 ```bash
-# Clear stray MongoDB instances
-pkill -f mongod
+# Clear stray PostgreSQL instances
+pkill -f postgres
 npm test -- tests/therapist/
 ```
 
@@ -265,7 +265,7 @@ open coverage/lcov-report/index.html
 
 ## Key Testing Framework Features
 
-✨ **MongoMemoryServer** - Isolated in-memory MongoDB per test suite  
+✨ **PostgreSQLFixture** - Isolated in-memory PostgreSQL per test suite  
 ✨ **Supertest** - Clean HTTP testing with Express  
 ✨ **Jest Mocking** - S3 upload simulation without AWS calls  
 ✨ **JWT Testing** - Token generation & validation  

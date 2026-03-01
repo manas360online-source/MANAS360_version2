@@ -1,1 +1,13 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const rbac_middleware_1 = require("../middleware/rbac.middleware");
+const validate_middleware_1 = require("../middleware/validate.middleware");
+const lead_controller_1 = require("../controllers/lead.controller");
+const router = (0, express_1.Router)();
+router.get('/me', auth_middleware_1.requireAuth, rbac_middleware_1.requireTherapistRole, ...validate_middleware_1.validateTherapistLeadsQuery, (0, validate_middleware_1.asyncHandler)(lead_controller_1.getMyTherapistLeadsController));
+router.post('/:id/purchase/initiate', auth_middleware_1.requireAuth, rbac_middleware_1.requireTherapistRole, ...validate_middleware_1.validateSessionIdParam, (0, validate_middleware_1.asyncHandler)(lead_controller_1.initiateMyTherapistLeadPurchaseController));
+router.post('/:id/purchase/confirm', auth_middleware_1.requireAuth, rbac_middleware_1.requireTherapistRole, ...validate_middleware_1.validateSessionIdParam, (0, validate_middleware_1.asyncHandler)(lead_controller_1.confirmMyTherapistLeadPurchaseController));
+router.post('/:id/purchase', auth_middleware_1.requireAuth, rbac_middleware_1.requireTherapistRole, ...validate_middleware_1.validateSessionIdParam, (0, validate_middleware_1.asyncHandler)(lead_controller_1.purchaseMyTherapistLeadController));
+exports.default = router;

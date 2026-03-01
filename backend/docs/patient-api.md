@@ -355,7 +355,7 @@ Role restriction: `patient` only (all endpoints below)
 
 ### Validation Rules
 
-- `therapistId`: valid Mongo ObjectId
+- `therapistId`: valid UUID
 - `dateTime`: valid ISO8601 and must be in the future
 - Therapist must be available at requested slot
 - Double booking prevented for active statuses (`pending`, `confirmed`)
@@ -632,7 +632,7 @@ paths:
               properties:
                 therapistId:
                   type: string
-                  description: Mongo ObjectId
+                  description: UUID
                 dateTime:
                   type: string
                   format: date-time

@@ -9,16 +9,15 @@
 /* Root variables for Therapeutic Color Psychology */
 @layer base {
   :root {
-    /* Refined Colors */
     --calm-sage: #A8B5A0;
     --soft-lavender: #C4B5D9;
     --warm-terracotta: #D4A89E;
     --gentle-blue: #9DADBE;
     --cream: #F5F3EE;
-    --charcoal: #3D4848;
-    --accent-coral: #E8B4A0;
-    --wellness-primary: #8BA8A8;
-    --wellness-text: #3D4848;
+    --charcoal: #2C3333;
+    --accent-coral: #E88B7A;
+    --wellness-primary: #A8B5A0;
+    --wellness-text: #2C3333;
 
     /* Typography */
     --serif: 'Crimson Pro', serif;
@@ -36,7 +35,7 @@
 
   body {
     @apply font-sans text-wellness-text bg-wellness-bg overflow-x-hidden antialiased;
-    background-attachment: fixed;
+    background: #F5F3EE;
     line-height: 1.7;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -78,38 +77,29 @@
 
 /* Enhanced animations and utilities */
 @layer utilities {
-  /* Utility classes */
-  .animate-breathe {
-    animation: breathe 6s ease-in-out infinite;
-  }
-
-  .animate-float {
-    animation: float 20s ease-in-out infinite;
-  }
-
   .animate-fade-in {
-    animation: fadeIn 1s ease-out;
+    animation: fadeIn 0.4s ease-out;
   }
 
   .animate-fade-in-down {
-    animation: fadeInDown 1s ease-out;
+    animation: fadeInDown 0.45s ease-out;
   }
 
   .animate-fade-in-up {
-    animation: fadeInUp 1s ease-out;
+    animation: fadeInUp 0.5s ease-out;
   }
 
   /* Enhanced glass morphism effects */
   .glass {
-    @apply bg-white/60 backdrop-blur-lg rounded-3xl border border-white/30 shadow-soft-sm;
+    @apply bg-white/70 backdrop-blur-sm rounded-3xl border border-white/40 shadow-soft-sm;
   }
 
   .glass-light {
-    @apply bg-white/40 backdrop-blur-md rounded-3xl border border-white/20;
+    @apply bg-white/55 backdrop-blur-sm rounded-3xl border border-white/30;
   }
 
   .glass-strong {
-    @apply bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 shadow-soft-md;
+    @apply bg-white/80 backdrop-blur-md rounded-3xl border border-white/45 shadow-soft-md;
   }
 
   /* Soft text gradients */
@@ -126,9 +116,9 @@
     padding-bottom: max(1rem, env(safe-area-inset-bottom));
   }
 
-  /* Calmer transitions - slower, gentler */
+  /* Calmer transitions */
   .transition-calm {
-    @apply transition-all duration-400 ease-in-out;
+    @apply transition-all duration-500 ease-in-out;
   }
 
   .transition-smooth {
@@ -136,12 +126,12 @@
   }
 
   .transition-smooth-lg {
-    @apply transition-all duration-500 ease-out;
+    @apply transition-all duration-600 ease-out;
   }
 
   /* Softer, more accessible focus styles */
   .focus-ring {
-    @apply outline-none focus:ring-2 focus:ring-offset-2 focus:ring-calm-sage/50;
+    @apply outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gentle-blue/60;
   }
 
   .focus-ring-lavender {
@@ -182,11 +172,11 @@
 
   /* Button base patterns */
   .btn-base {
-    @apply px-6 py-3 rounded-full font-medium transition-smooth focus-ring;
+    @apply px-6 py-3 rounded-full font-medium transition-smooth focus-ring min-h-[44px];
   }
 
   .btn-primary {
-    @apply btn-base bg-gradient-calm text-white hover:shadow-soft-lg hover:-translate-y-0.5;
+    @apply btn-base bg-gradient-calm text-white hover:shadow-soft-lg hover:-translate-y-0.5 hover:scale-[1.02];
   }
 
   .btn-secondary {
@@ -241,9 +231,3 @@
   }
 }
 
-/* Dark mode support (optional) */
-@media (prefers-color-scheme: dark) {
-  body {
-    @apply bg-gradient-to-br from-charcoal via-soft-lavender/20 to-gentle-blue/20;
-  }
-}

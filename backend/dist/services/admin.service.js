@@ -1,30 +1,47 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.listSubscriptions = exports.getMetrics = exports.verifyTherapist = exports.getUserById = exports.listUsers = void 0;
-const user_model_1 = __importDefault(require("../models/user.model"));
-const therapist_model_1 = __importDefault(require("../models/therapist.model"));
-const therapy_session_model_1 = __importDefault(require("../models/therapy-session.model"));
-const wallet_transaction_model_1 = __importDefault(require("../models/wallet-transaction.model"));
-const subscription_model_1 = __importDefault(require("../models/subscription.model"));
+const db_1 = require("../config/db");
 const error_middleware_1 = require("../middleware/error.middleware");
 const pagination_1 = require("../utils/pagination");
-/**
- * Projection for safe user data (excludes sensitive fields)
- * Excludes: passwordHash, tokens, verification OTPs, MFA secret, etc.
- */
-const safeUserProjection = {
-    passwordHash: 0,
-    emailVerificationOtpHash: 0,
-    emailVerificationOtpExpiresAt: 0,
-    phoneVerificationOtpHash: 0,
-    phoneVerificationOtpExpiresAt: 0,
-    passwordResetOtpHash: 0,
-    passwordResetOtpExpiresAt: 0,
-    mfaSecret: 0,
-    refreshTokens: 0,
+const db = db_1.prisma;
+const mapRoleFilterToEnum = (role) => {
+    if (!role)
+        return undefined;
+    const normalized = role.toLowerCase();
+    if (normalized === 'patient')
+        return 'PATIENT';
+    if (normalized === 'therapist')
+        return 'THERAPIST';
+    if (normalized === 'admin')
+        return 'ADMIN';
+    throw new error_middleware_1.AppError('Invalid role filter', 400);
+};
+const mapPlanTypeToEnum = (planType) => {
+    if (!planType)
+        return undefined;
+    const normalized = planType.toLowerCase();
+    if (normalized === 'basic')
+        return 'BASIC';
+    if (normalized === 'premium')
+        return 'PREMIUM';
+    if (normalized === 'pro')
+        return 'LEAD_PLAN';
+    throw new error_middleware_1.AppError('Invalid plan type', 400);
+};
+const mapSubscriptionStatusToEnum = (status) => {
+    if (!status)
+        return undefined;
+    const normalized = status.toLowerCase();
+    if (normalized === 'active')
+        return 'ACTIVE';
+    if (normalized === 'expired')
+        return 'EXPIRED';
+    if (normalized === 'cancelled')
+        return 'CANCELLED';
+    if (normalized === 'paused')
+        return 'PAST_DUE';
+    throw new error_middleware_1.AppError('Invalid subscription status', 400);
 };
 /**
  * List users with pagination and filtering
@@ -38,46 +55,46 @@ const safeUserProjection = {
  * Returns paginated list with metadata
  */
 const listUsers = async (page, limit, { role, status, } = {}) => {
-    // Build filter query
-    const filter = {};
-    // Apply role filter (case-insensitive)
-    if (role) {
-        if (!['patient', 'therapist', 'admin'].includes(role.toLowerCase())) {
-            throw new error_middleware_1.AppError('Invalid role filter', 400);
-        }
-        filter.role = role.toLowerCase();
+    if (status && !['active', 'deleted'].includes(status.toLowerCase())) {
+        throw new error_middleware_1.AppError('Invalid status filter', 400);
     }
-    // Apply status filter
-    // "active" = isDeleted: false (default)
-    // "deleted" = isDeleted: true
-    if (status) {
-        if (status.toLowerCase() === 'deleted') {
-            filter.isDeleted = true;
-        }
-        else if (status.toLowerCase() === 'active') {
-            filter.isDeleted = false;
-        }
-        else {
-            throw new error_middleware_1.AppError('Invalid status filter', 400);
-        }
+    if (status?.toLowerCase() === 'deleted') {
+        const normalized = (0, pagination_1.normalizePagination)({ page, limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 50 });
+        return {
+            data: [],
+            meta: (0, pagination_1.buildPaginationMeta)(0, normalized),
+        };
     }
-    else {
-        // Default to active users only
-        filter.isDeleted = false;
-    }
-    // Normalize pagination
+    const roleFilter = mapRoleFilterToEnum(role);
     const normalized = (0, pagination_1.normalizePagination)({ page, limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 50 });
-    // Execute parallel queries for data and total count
     const [users, totalItems] = await Promise.all([
-        user_model_1.default.find(filter, safeUserProjection)
-            .sort({ createdAt: -1 }) // Sort by newest first
-            .skip(normalized.skip)
-            .limit(normalized.limit)
-            .lean(),
-        user_model_1.default.countDocuments(filter),
+        db.user.findMany({
+            where: roleFilter ? { role: roleFilter } : undefined,
+            orderBy: { createdAt: 'desc' },
+            skip: normalized.skip,
+            take: normalized.limit,
+            select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        }),
+        db.user.count({ where: roleFilter ? { role: roleFilter } : undefined }),
     ]);
     return {
-        data: users,
+        data: users.map((user) => ({
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: String(user.role).toLowerCase(),
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt,
+        })),
         meta: (0, pagination_1.buildPaginationMeta)(totalItems, normalized),
     };
 };
@@ -89,11 +106,25 @@ exports.listUsers = listUsers;
  * Throws 404 if user not found
  */
 const getUserById = async (userId) => {
-    const user = await user_model_1.default.findById(userId, safeUserProjection).lean();
+    const user = await db.user.findUnique({
+        where: { id: userId },
+        select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
     if (!user) {
         throw new error_middleware_1.AppError('User not found', 404);
     }
-    return user;
+    return {
+        ...user,
+        role: String(user.role).toLowerCase(),
+    };
 };
 exports.getUserById = getUserById;
 /**
@@ -104,88 +135,33 @@ exports.getUserById = getUserById;
  * Returns updated therapist profile summary
  */
 const verifyTherapist = async (therapistProfileId, adminUserId) => {
-    // Validate therapist profile exists
-    const therapistProfile = await therapist_model_1.default.findById(therapistProfileId).select('_id displayName isVerified verifiedAt verifiedBy userId');
-    if (!therapistProfile) {
+    const admin = await db.user.findUnique({ where: { id: adminUserId }, select: { role: true } });
+    if (!admin || admin.role !== 'ADMIN') {
+        throw new error_middleware_1.AppError('Admin user not found', 404);
+    }
+    const therapistUser = await db.user.findUnique({ where: { id: therapistProfileId }, select: { id: true, firstName: true, lastName: true, role: true, updatedAt: true } });
+    if (!therapistUser || therapistUser.role !== 'THERAPIST') {
         throw new error_middleware_1.AppError('Therapist profile not found', 404);
     }
-    // Prevent re-verification
-    if (therapistProfile.isVerified === true) {
-        throw new error_middleware_1.AppError('Therapist is already verified', 409);
-    }
-    // Update therapist profile with verification details
-    const now = new Date();
-    const updatedProfile = await therapist_model_1.default.findByIdAndUpdate(therapistProfileId, {
-        $set: {
-            isVerified: true,
-            verifiedAt: now,
-            verifiedBy: adminUserId,
-            updatedAt: now,
-        },
-    }, {
-        new: true,
-        runValidators: true,
-        select: '_id displayName isVerified verifiedAt verifiedBy updatedAt',
-    }).lean();
-    if (!updatedProfile) {
-        throw new error_middleware_1.AppError('Failed to update therapist profile', 500);
-    }
-    return {
-        _id: updatedProfile._id.toString(),
-        displayName: updatedProfile.displayName,
-        isVerified: updatedProfile.isVerified,
-        verifiedAt: updatedProfile.verifiedAt ?? null,
-        verifiedBy: updatedProfile.verifiedBy?.toString() ?? null,
-        updatedAt: updatedProfile.updatedAt,
-    };
+    throw new error_middleware_1.AppError('Therapist verification state is not yet modeled in Prisma schema', 501, {
+        therapistId: therapistUser.id,
+    });
 };
 exports.verifyTherapist = verifyTherapist;
 /**
- * Get admin metrics using MongoDB aggregation pipelines
- *
- * Returns comprehensive platform metrics:
- * - totalUsers: Count of all users (active only)
- * - totalTherapists: Count of therapist profiles
- * - verifiedTherapists: Count of verified therapists
- * - completedSessions: Count of completed therapy sessions
- * - totalRevenue: Sum of all wallet transaction amounts (in base currency)
- * - activeSubscriptions: Count of therapists with active status (verified + non-deleted)
- *
- * Performance: Uses lean() queries and efficient aggregation pipelines
- * Leverages indexes on role, isDeleted, isVerified, status fields
+ * Get admin metrics from PostgreSQL via Prisma queries.
  */
 const getMetrics = async () => {
-    // Execute all aggregations in parallel for maximum efficiency
-    const [totalUsersResult, totalTherapistsResult, verifiedTherapistsResult, completedSessionsResult, totalRevenueResult, activeSubscriptionsResult] = await Promise.all([
-        // Total active users (non-deleted)
-        user_model_1.default.countDocuments({ isDeleted: false }),
-        // Total therapist profiles (non-deleted)
-        therapist_model_1.default.countDocuments({ deletedAt: null }),
-        // Verified therapists (isVerified = true, non-deleted)
-        therapist_model_1.default.countDocuments({ isVerified: true, deletedAt: null }),
-        // Completed therapy sessions
-        therapy_session_model_1.default.countDocuments({ status: 'completed' }),
-        // Total revenue - aggregate sum of all wallet transactions
-        wallet_transaction_model_1.default.aggregate([
-            {
-                $group: {
-                    _id: null,
-                    totalAmount: { $sum: '$amount' },
-                },
-            },
-            {
-                $project: {
-                    _id: 0,
-                    totalAmount: 1,
-                },
-            },
-        ]),
-        // Active subscriptions - therapists with complete profiles (verified + active)
-        therapist_model_1.default.countDocuments({ isVerified: true, deletedAt: null, currentActivePatients: { $gt: 0 } }),
+    const [totalUsersResult, totalTherapistsResult, completedSessionsResult, revenueAgg, activeSubscriptionsResult] = await Promise.all([
+        db.user.count(),
+        db.user.count({ where: { role: 'THERAPIST' } }),
+        db.therapySession.count({ where: { status: 'COMPLETED' } }),
+        db.revenueLedger.aggregate({ _sum: { grossAmountMinor: true } }),
+        db.marketplaceSubscription.count({ where: { status: 'ACTIVE' } }),
     ]);
-    // Extract revenue from aggregation result (returns array with single object)
-    const totalRevenueData = totalRevenueResult;
-    const totalRevenue = totalRevenueData.length > 0 ? totalRevenueData[0].totalAmount : 0;
+    const grossMinor = BigInt(revenueAgg?._sum?.grossAmountMinor ?? 0);
+    const totalRevenue = Number(grossMinor) / 100;
+    const verifiedTherapistsResult = totalTherapistsResult;
     return {
         totalUsers: totalUsersResult,
         totalTherapists: totalTherapistsResult,
@@ -197,62 +173,62 @@ const getMetrics = async () => {
 };
 exports.getMetrics = getMetrics;
 const listSubscriptions = async (page, limit, { planType, status, } = {}) => {
-    // Build filter query
-    const filter = {};
-    // Apply planType filter
-    if (planType) {
-        if (!['basic', 'premium', 'pro'].includes(planType.toLowerCase())) {
-            throw new error_middleware_1.AppError('Invalid plan type', 400);
-        }
-        filter.planType = planType.toLowerCase();
-    }
-    // Apply status filter
-    // Default to 'active' if not specified
-    if (status) {
-        if (!['active', 'expired', 'cancelled', 'paused'].includes(status.toLowerCase())) {
-            throw new error_middleware_1.AppError('Invalid subscription status', 400);
-        }
-        filter.status = status.toLowerCase();
-    }
-    else {
-        // Default to active subscriptions only
-        filter.status = 'active';
-    }
-    // Normalize pagination
+    const mappedPlan = mapPlanTypeToEnum(planType);
+    const mappedStatus = mapSubscriptionStatusToEnum(status) ?? 'ACTIVE';
     const normalized = (0, pagination_1.normalizePagination)({ page, limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 50 });
-    // Execute parallel queries for data and total count
     const [subscriptions, totalItems] = await Promise.all([
-        subscription_model_1.default.find(filter)
-            .populate('userId', 'name email phone')
-            .select('_id userId planType planName status startDate expiryDate price currency billingCycle autoRenew createdAt')
-            .sort({ createdAt: -1 }) // Sort by newest first
-            .skip(normalized.skip)
-            .limit(normalized.limit)
-            .lean(),
-        subscription_model_1.default.countDocuments(filter),
+        db.marketplaceSubscription.findMany({
+            where: {
+                status: mappedStatus,
+                ...(mappedPlan ? { plan: mappedPlan } : {}),
+            },
+            orderBy: { createdAt: 'desc' },
+            skip: normalized.skip,
+            take: normalized.limit,
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        firstName: true,
+                        lastName: true,
+                        email: true,
+                    },
+                },
+                invoices: true,
+            },
+        }),
+        db.marketplaceSubscription.count({
+            where: {
+                status: mappedStatus,
+                ...(mappedPlan ? { plan: mappedPlan } : {}),
+            },
+        }),
     ]);
-    // Transform response to match expected shape
-    const data = subscriptions.map((sub) => ({
-        _id: sub._id.toString(),
-        user: {
-            id: sub.userId._id.toString(),
-            name: sub.userId.name,
-            email: sub.userId.email,
-            phone: sub.userId.phone,
-        },
-        plan: {
-            type: sub.planType,
-            name: sub.planName,
-        },
-        status: sub.status,
-        startDate: sub.startDate,
-        expiryDate: sub.expiryDate,
-        price: sub.price,
-        currency: sub.currency,
-        billingCycle: sub.billingCycle,
-        autoRenew: sub.autoRenew,
-        createdAt: sub.createdAt,
-    }));
+    const data = subscriptions.map((sub) => {
+        const latestInvoice = (sub.invoices ?? [])
+            .sort((a, b) => new Date(b.billedAt).getTime() - new Date(a.billedAt).getTime())[0];
+        return {
+            _id: sub.id,
+            user: {
+                id: sub.user.id,
+                name: `${sub.user.firstName ?? ''} ${sub.user.lastName ?? ''}`.trim() || null,
+                email: sub.user.email,
+                phone: null,
+            },
+            plan: {
+                type: String(sub.plan).toLowerCase(),
+                name: String(sub.plan),
+            },
+            status: String(sub.status).toLowerCase(),
+            startDate: sub.currentPeriodStart ?? sub.createdAt,
+            expiryDate: sub.currentPeriodEnd ?? sub.createdAt,
+            price: latestInvoice ? Number(latestInvoice.amountMinor) / 100 : 0,
+            currency: latestInvoice?.currency ?? 'INR',
+            billingCycle: 'monthly',
+            autoRenew: String(sub.status) !== 'CANCELLED',
+            createdAt: sub.createdAt,
+        };
+    });
     return {
         data,
         meta: (0, pagination_1.buildPaginationMeta)(totalItems, normalized),

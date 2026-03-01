@@ -1,9 +1,4 @@
-import { Types } from 'mongoose';
-import TherapySessionModel from '../models/therapy-session.model';
 import { prisma } from '../config/db';
-import TherapistProfileModel from '../models/therapist.model';
-import PatientProfileModel from '../models/patient.model';
-import UserModel from '../models/user.model';
 import { createClient } from 'redis';
 import { env } from '../config/env';
 
@@ -33,11 +28,13 @@ function decodeCursor(cursor?: string): { date: Date; id: string } | null {
 export async function listTherapistSessions(opts: ListOpts) {
   const limit = Math.min(opts.limit ?? 20, 100);
 
-  // resolve therapist profile id from user id
-  const therapist = await TherapistProfileModel.findOne({ userId: opts.therapistUserId }).select({ _id: 1 }).lean() as any;
-  if (!therapist) return { items: [], nextCursor: null };
+  const therapist = await prisma.user.findUnique({
+    where: { id: opts.therapistUserId },
+    select: { id: true, role: true },
+  });
+  if (!therapist || String(therapist.role) !== 'THERAPIST') return { items: [], nextCursor: null };
 
-  const where: any = { therapistProfileId: String(therapist._id) };
+  const where: any = { therapistProfileId: String(therapist.id) };
   if (opts.status) where.status = String(opts.status).toUpperCase();
   if (opts.from || opts.to) {
     where.dateTime = {} as any;
@@ -48,10 +45,23 @@ export async function listTherapistSessions(opts: ListOpts) {
   // patient search (best-effort, limited to therapist's patients)
   if (opts.q) {
     const q = new RegExp(opts.q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    const users = await UserModel.find({ $or: [{ firstName: q }, { lastName: q }, { email: q }] }).select({ _id: 1 }).lean() as any;
-    const userIds = users.map((u: any) => u._id);
-    const patients = (await (PatientProfileModel.find({ userId: { $in: userIds } }).select({ _id: 1 }) as any).lean()) as any;
-    const pIds = patients.map((p: any) => p._id);
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          { firstName: { contains: opts.q, mode: 'insensitive' } },
+          { lastName: { contains: opts.q, mode: 'insensitive' } },
+          { email: { contains: opts.q, mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true },
+    });
+
+    const userIds = users.map((u) => u.id);
+    const patients = await prisma.patientProfile.findMany({
+      where: { userId: { in: userIds } },
+      select: { id: true },
+    });
+    const pIds = patients.map((p) => p.id);
     if (pIds.length === 0) return { items: [], nextCursor: null };
     where.patientProfileId = { in: pIds.map(String) };
   }
@@ -75,11 +85,17 @@ export async function listTherapistSessions(opts: ListOpts) {
 
   // fetch patient snapshots for the page
   const patientIds = [...new Set(page.map((d: any) => String(d.patientProfileId)))];
-  const patients = (await (PatientProfileModel.find({ _id: { $in: patientIds } }).select({ _id: 1, age: 1, userId: 1 }) as any).lean()) as any;
-  const users = (await UserModel.find({ _id: { $in: patients.map((p: any) => p.userId) } }).select({ firstName: 1, lastName: 1 }).lean()) as any;
+  const patients = await prisma.patientProfile.findMany({
+    where: { id: { in: patientIds } },
+    select: { id: true, age: true, userId: true },
+  });
+  const users = await prisma.user.findMany({
+    where: { id: { in: patients.map((p) => p.userId) } },
+    select: { id: true, firstName: true, lastName: true },
+  });
 
-  const patientMap: Map<string, any> = new Map((patients as any).map((p: any) => [String(p._id), p]));
-  const userMap: Map<string, any> = new Map((users as any).map((u: any) => [String(u._id), u]));
+  const patientMap: Map<string, any> = new Map(patients.map((p) => [String(p.id), p]));
+  const userMap: Map<string, any> = new Map(users.map((u) => [String(u.id), u]));
 
   const items = page.map((s: any) => {
     const pat = patientMap.get(String(s.patientProfileId));
@@ -119,22 +135,36 @@ export async function listTherapistSessions(opts: ListOpts) {
 }
 
 export async function getTherapistSessionDetail(therapistUserId: string, sessionId: string) {
-  const therapist = await TherapistProfileModel.findOne({ userId: therapistUserId }).select({ _id: 1 }).lean();
-  if (!therapist) throw new Error('Therapist profile not found');
+  const therapist = await prisma.user.findUnique({
+    where: { id: therapistUserId },
+    select: { id: true, role: true },
+  });
+  if (!therapist || String(therapist.role) !== 'THERAPIST') throw new Error('Therapist profile not found');
 
-  const session = await TherapySessionModel.findOne({ _id: sessionId, therapistId: therapist._id })
-    .select({ bookingReferenceId: 1, patientId: 1, dateTime: 1, status: 1, cancelledAt: 1 })
-    .lean();
+  const session = await prisma.therapySession.findFirst({
+    where: { id: sessionId, therapistProfileId: String(therapist.id) },
+    select: {
+      id: true,
+      bookingReferenceId: true,
+      patientProfileId: true,
+      dateTime: true,
+      status: true,
+      cancelledAt: true,
+    },
+  });
+
   if (!session) throw new Error('Session not found');
 
-  // fetch responses (mongoose-based model may vary)
-  let responses: any[] = [];
-  try {
-    const ResponseModel = require('../models/session-response.model').default;
-    responses = await ResponseModel.find({ sessionId }).select({ _id: 1, questionId: 1, questionText: 1, answer: 1, createdAt: 1 }).sort({ createdAt: 1 }).lean();
-  } catch (e) {
-    // ignore
-  }
+  const responses = await prisma.patientSessionResponse.findMany({
+    where: { sessionId: String(session.id) },
+    orderBy: { answeredAt: 'asc' },
+    select: {
+      id: true,
+      questionId: true,
+      responseData: true,
+      answeredAt: true,
+    },
+  });
 
   // presence
   let presence = { patientOnline: false, sessionActive: false };
@@ -148,8 +178,20 @@ export async function getTherapistSessionDetail(therapistUserId: string, session
   } catch (e) {}
 
   return {
-    session: { id: String(session.id), scheduledAt: session.dateTime, status: String(session.status).toLowerCase(), cancelledAt: session.cancelledAt },
-    responses,
+    session: {
+      id: String(session.id),
+      scheduledAt: session.dateTime,
+      status: String(session.status).toLowerCase(),
+      cancelledAt: session.cancelledAt,
+      bookingReferenceId: session.bookingReferenceId,
+      patientProfileId: String(session.patientProfileId),
+    },
+    responses: responses.map((row) => ({
+      id: row.id,
+      questionId: row.questionId,
+      answer: row.responseData,
+      createdAt: row.answeredAt,
+    })),
     presence,
   };
 }

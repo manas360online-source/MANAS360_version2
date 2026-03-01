@@ -2,12 +2,17 @@ node_modules/
 *.log
 .DS_Store
 backend/node_modules/
+backend/dist/
+backend/.venv/
 frontend/node_modules/
 load-tests/**/node_modules/
 -e 
 # Environment files
 *.env
 *.env.*
+!*.env.example
+!backend/.env.example
+!frontend/.env.example
 -e 
 # Environment files
 *.env
