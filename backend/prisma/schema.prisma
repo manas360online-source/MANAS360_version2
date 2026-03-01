@@ -94,6 +94,8 @@ model User {
   therapyBookings           TherapySession[]
   financialPatientSessions  FinancialSession[]        @relation("FinancialPatient")
   financialProviderSessions FinancialSession[]        @relation("FinancialProvider")
+  patientLeads              Lead[]                    @relation("LeadPatient")
+  providerLeads             Lead[]                    @relation("LeadProvider")
   providerWallet            ProviderWallet?           @relation("ProviderWalletOwner")
   subscriptions             MarketplaceSubscription[] @relation("UserSubscriptions")
   financialAuditEvents      FinancialAuditLog[]       @relation("UserFinancialAudits")
@@ -675,6 +677,21 @@ enum FinancialAuditActorType {
   CRON
 }
 
+enum LeadStatus {
+  AVAILABLE
+  PURCHASED
+  EXPIRED
+  NO_RESPONSE
+  ACCEPTED
+}
+
+enum LeadPaymentStatus {
+  NOT_REQUIRED
+  INITIATED
+  CAPTURED
+  FAILED
+}
+
 model FinancialSession {
   id                  String                 @id @default(uuid())
   patientId           String
@@ -700,6 +717,39 @@ model FinancialSession {
   @@index([providerId, status])
   @@index([createdAt])
   @@map("financial_sessions")
+}
+
+model Lead {
+  id                      String     @id @default(uuid())
+  patientId               String
+  providerId              String?
+  status                  LeadStatus @default(AVAILABLE)
+  matchScore              Int?
+  amountMinor             BigInt
+  currency                String     @default("INR")
+  previewData             Json?
+  patientAcceptanceUntil  DateTime?
+  providerContactedAt     DateTime?
+  purchasedAt             DateTime?
+  acceptedAt              DateTime?
+  expiresAt               DateTime?
+  paymentStatus           LeadPaymentStatus @default(NOT_REQUIRED)
+  razorpayOrderId         String?           @unique
+  razorpayPaymentId       String?           @unique
+  paymentCapturedAt       DateTime?
+  idempotencyKey          String?    @unique
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+
+  patient  User  @relation("LeadPatient", fields: [patientId], references: [id], onDelete: Restrict)
+  provider User? @relation("LeadProvider", fields: [providerId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([providerId, status])
+  @@index([providerId, paymentStatus])
+  @@index([patientId, status])
+  @@index([patientAcceptanceUntil])
+  @@map("leads")
 }
 
 model FinancialPayment {

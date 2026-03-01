@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.revokeSessionController = exports.sessionsController = exports.logoutController = exports.mfaVerifyController = exports.mfaSetupController = exports.resetPasswordController = exports.requestPasswordResetController = exports.refreshTokenController = exports.googleLoginController = exports.loginController = exports.verifyPhoneOtpController = exports.signupWithPhoneController = exports.verifyEmailOtpController = exports.signupWithEmailController = void 0;
+exports.revokeSessionController = exports.sessionsController = exports.logoutController = exports.mfaVerifyController = exports.mfaSetupController = exports.resetPasswordController = exports.requestPasswordResetController = exports.refreshTokenController = exports.googleLoginController = exports.loginController = exports.verifyPhoneOtpController = exports.signupWithPhoneController = exports.verifyEmailOtpController = exports.signupWithEmailController = exports.meController = exports.registerController = void 0;
 const crypto_1 = require("crypto");
 const env_1 = require("../config/env");
+const db_1 = require("../config/db");
 const auth_service_1 = require("../services/auth.service");
 const response_1 = require("../utils/response");
 const auth_validator_1 = require("../validators/auth.validator");
@@ -37,6 +38,49 @@ const setAuthCookies = (res, accessToken, refreshToken) => {
         maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 };
+const registerController = async (req, res) => {
+    const result = await (0, auth_service_1.registerWithEmail)({
+        email: (0, auth_validator_1.validateEmail)(req.body.email),
+        password: (0, auth_validator_1.validatePassword)(req.body.password),
+        name: typeof req.body.name === 'string' ? req.body.name.trim() || undefined : undefined,
+    }, getRequestMeta(req));
+    (0, response_1.sendSuccess)(res, result, 'Registration successful', 201);
+};
+exports.registerController = registerController;
+const meController = async (req, res) => {
+    if (!req.auth?.userId) {
+        throw new error_middleware_1.AppError('Authentication required', 401);
+    }
+    const user = await db_1.prisma.user.findUnique({
+        where: { id: req.auth.userId },
+        select: {
+            id: true,
+            email: true,
+            phone: true,
+            role: true,
+            firstName: true,
+            lastName: true,
+            emailVerified: true,
+            phoneVerified: true,
+            mfaEnabled: true,
+        },
+    });
+    if (!user) {
+        throw new error_middleware_1.AppError('User not found', 404);
+    }
+    (0, response_1.sendSuccess)(res, {
+        id: String(user.id),
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        emailVerified: user.emailVerified,
+        phoneVerified: user.phoneVerified,
+        mfaEnabled: user.mfaEnabled,
+    }, 'Authenticated user fetched');
+};
+exports.meController = meController;
 const signupWithEmailController = async (req, res) => {
     const result = await (0, auth_service_1.registerWithEmail)({
         email: (0, auth_validator_1.validateEmail)(req.body.email),

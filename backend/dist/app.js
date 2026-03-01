@@ -6,6 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const helmet_1 = __importDefault(require("helmet"));
+const cors_1 = __importDefault(require("cors"));
 const env_1 = require("./config/env");
 const error_middleware_1 = require("./middleware/error.middleware");
 const logger_middleware_1 = require("./middleware/logger.middleware");
@@ -14,6 +15,10 @@ const prom_client_1 = __importDefault(require("prom-client"));
 const app = (0, express_1.default)();
 app.disable('x-powered-by');
 app.use((0, helmet_1.default)());
+app.use((0, cors_1.default)({
+    origin: env_1.env.corsOrigin,
+    credentials: true,
+}));
 app.use(express_1.default.json({
     limit: '1mb',
     verify: (req, _res, buf) => {

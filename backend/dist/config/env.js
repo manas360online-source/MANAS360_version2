@@ -31,6 +31,7 @@ exports.env = Object.freeze({
     nodeEnv: parseNodeEnv(process.env.NODE_ENV),
     port: parsePort(process.env.PORT),
     apiPrefix: process.env.API_PREFIX ?? '/api',
+    corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
     databaseUrl: process.env.DATABASE_URL,
     jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? 'change-access-secret',
     jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? 'change-refresh-secret',

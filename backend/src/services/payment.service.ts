@@ -9,6 +9,9 @@ import {
 } from './razorpay.service';
 
 const redis = createClient({ url: env.redisUrl });
+redis.on('error', (error) => {
+	console.warn('[payment.service] Redis unavailable, continuing with degraded idempotency cache', error);
+});
 void redis.connect().catch(() => undefined);
 
 const db = prisma as any;

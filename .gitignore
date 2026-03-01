@@ -10,3 +10,6 @@ load-tests/**/node_modules/
 # Environment files
 *.env
 *.env.*
+!*.env.example
+!backend/.env.example
+!frontend/.env.example

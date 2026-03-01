@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.verifyRazorpayWebhookSignature = exports.createRazorpaySubscription = exports.createRazorpayOrder = void 0;
+exports.verifyRazorpayPaymentSignature = exports.verifyRazorpayWebhookSignature = exports.createRazorpaySubscription = exports.createRazorpayOrder = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const env_1 = require("../config/env");
 const RAZORPAY_BASE_URL = 'https://api.razorpay.com/v1';
@@ -65,3 +65,14 @@ const verifyRazorpayWebhookSignature = (rawBody, receivedSignature, secret) => {
     return crypto_1.default.timingSafeEqual(digestBuf, sigBuf);
 };
 exports.verifyRazorpayWebhookSignature = verifyRazorpayWebhookSignature;
+const verifyRazorpayPaymentSignature = (razorpayOrderId, razorpayPaymentId, receivedSignature, secret) => {
+    const payload = `${razorpayOrderId}|${razorpayPaymentId}`;
+    const digest = crypto_1.default.createHmac('sha256', secret).update(payload).digest('hex');
+    const digestBuf = Buffer.from(digest, 'utf8');
+    const sigBuf = Buffer.from(receivedSignature, 'utf8');
+    if (digestBuf.length !== sigBuf.length) {
+        return false;
+    }
+    return crypto_1.default.timingSafeEqual(digestBuf, sigBuf);
+};
+exports.verifyRazorpayPaymentSignature = verifyRazorpayPaymentSignature;

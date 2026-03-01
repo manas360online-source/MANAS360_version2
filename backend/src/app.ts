@@ -1,6 +1,7 @@
 import express from 'express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import cors from 'cors';
 import { env } from './config/env';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { requestLogger } from './middleware/logger.middleware';
@@ -11,6 +12,12 @@ const app = express();
 
 app.disable('x-powered-by');
 app.use(helmet());
+app.use(
+	cors({
+		origin: env.corsOrigin,
+		credentials: true,
+	}),
+);
 app.use(
 	express.json({
 		limit: '1mb',

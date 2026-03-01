@@ -41,6 +41,9 @@ const db_1 = require("../config/db");
 const error_middleware_1 = require("../middleware/error.middleware");
 const razorpay_service_1 = require("./razorpay.service");
 const redis = (0, redis_1.createClient)({ url: env_1.env.redisUrl });
+redis.on('error', (error) => {
+    console.warn('[payment.service] Redis unavailable, continuing with degraded idempotency cache', error);
+});
 void redis.connect().catch(() => undefined);
 const db = db_1.prisma;
 const asMinor = (value) => Math.max(0, Math.round(value));

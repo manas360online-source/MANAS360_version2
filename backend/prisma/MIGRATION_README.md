@@ -4,6 +4,13 @@ This project uses SQL-first Prisma migrations under `prisma/migrations` and help
 
 ## Prerequisites
 
+0. Initialize environment variables from template:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
 1. Set a valid database connection:
 
 ```bash

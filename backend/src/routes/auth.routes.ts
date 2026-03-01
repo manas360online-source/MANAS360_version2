@@ -3,8 +3,10 @@ import {
 	googleLoginController,
 	loginController,
 	logoutController,
+	meController,
 	mfaSetupController,
 	mfaVerifyController,
+	registerController,
 	refreshTokenController,
 	requestPasswordResetController,
 	revokeSessionController,
@@ -21,6 +23,7 @@ import { asyncHandler } from '../middleware/validate.middleware';
 
 const router = Router();
 
+router.post('/register', authRateLimiter, asyncHandler(registerController));
 router.post('/signup/email', authRateLimiter, asyncHandler(signupWithEmailController));
 router.post('/verify/email-otp', authRateLimiter, asyncHandler(verifyEmailOtpController));
 router.post('/signup/phone', authRateLimiter, asyncHandler(signupWithPhoneController));
@@ -36,6 +39,7 @@ router.post('/password/reset', authRateLimiter, asyncHandler(resetPasswordContro
 router.post('/mfa/setup', requireAuth, asyncHandler(mfaSetupController));
 router.post('/mfa/verify', requireAuth, asyncHandler(mfaVerifyController));
 
+router.get('/me', requireAuth, asyncHandler(meController));
 router.get('/sessions', requireAuth, asyncHandler(sessionsController));
 router.delete('/sessions/:sessionId', requireAuth, asyncHandler(revokeSessionController));
 router.post('/logout', requireAuth, requireCsrf, asyncHandler(logoutController));

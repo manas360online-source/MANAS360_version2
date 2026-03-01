@@ -111,3 +111,21 @@ export const verifyRazorpayWebhookSignature = (
 	return crypto.timingSafeEqual(digestBuf, sigBuf);
 };
 
+export const verifyRazorpayPaymentSignature = (
+	razorpayOrderId: string,
+	razorpayPaymentId: string,
+	receivedSignature: string,
+	secret: string,
+): boolean => {
+	const payload = `${razorpayOrderId}|${razorpayPaymentId}`;
+	const digest = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+	const digestBuf = Buffer.from(digest, 'utf8');
+	const sigBuf = Buffer.from(receivedSignature, 'utf8');
+
+	if (digestBuf.length !== sigBuf.length) {
+		return false;
+	}
+
+	return crypto.timingSafeEqual(digestBuf, sigBuf);
+};
+

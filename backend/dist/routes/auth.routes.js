@@ -6,6 +6,7 @@ const auth_middleware_1 = require("../middleware/auth.middleware");
 const rateLimiter_middleware_1 = require("../middleware/rateLimiter.middleware");
 const validate_middleware_1 = require("../middleware/validate.middleware");
 const router = (0, express_1.Router)();
+router.post('/register', rateLimiter_middleware_1.authRateLimiter, (0, validate_middleware_1.asyncHandler)(auth_controller_1.registerController));
 router.post('/signup/email', rateLimiter_middleware_1.authRateLimiter, (0, validate_middleware_1.asyncHandler)(auth_controller_1.signupWithEmailController));
 router.post('/verify/email-otp', rateLimiter_middleware_1.authRateLimiter, (0, validate_middleware_1.asyncHandler)(auth_controller_1.verifyEmailOtpController));
 router.post('/signup/phone', rateLimiter_middleware_1.authRateLimiter, (0, validate_middleware_1.asyncHandler)(auth_controller_1.signupWithPhoneController));
@@ -17,6 +18,7 @@ router.post('/password/forgot', rateLimiter_middleware_1.authRateLimiter, (0, va
 router.post('/password/reset', rateLimiter_middleware_1.authRateLimiter, (0, validate_middleware_1.asyncHandler)(auth_controller_1.resetPasswordController));
 router.post('/mfa/setup', auth_middleware_1.requireAuth, (0, validate_middleware_1.asyncHandler)(auth_controller_1.mfaSetupController));
 router.post('/mfa/verify', auth_middleware_1.requireAuth, (0, validate_middleware_1.asyncHandler)(auth_controller_1.mfaVerifyController));
+router.get('/me', auth_middleware_1.requireAuth, (0, validate_middleware_1.asyncHandler)(auth_controller_1.meController));
 router.get('/sessions', auth_middleware_1.requireAuth, (0, validate_middleware_1.asyncHandler)(auth_controller_1.sessionsController));
 router.delete('/sessions/:sessionId', auth_middleware_1.requireAuth, (0, validate_middleware_1.asyncHandler)(auth_controller_1.revokeSessionController));
 router.post('/logout', auth_middleware_1.requireAuth, auth_middleware_1.requireCsrf, (0, validate_middleware_1.asyncHandler)(auth_controller_1.logoutController));

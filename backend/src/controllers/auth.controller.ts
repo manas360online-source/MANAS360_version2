@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
 import type { Request, Response } from 'express';
 import { env } from '../config/env';
+import { prisma } from '../config/db';
 import {
 	getActiveSessions,
 	loginWithGoogle,
@@ -59,6 +60,60 @@ const setAuthCookies = (res: Response, accessToken: string, refreshToken: string
 		path: '/',
 		maxAge: 7 * 24 * 60 * 60 * 1000,
 	});
+};
+
+export const registerController = async (req: Request, res: Response): Promise<void> => {
+	const result = await registerWithEmail(
+		{
+			email: validateEmail(req.body.email),
+			password: validatePassword(req.body.password),
+			name: typeof req.body.name === 'string' ? req.body.name.trim() || undefined : undefined,
+		},
+		getRequestMeta(req),
+	);
+
+	sendSuccess(res, result, 'Registration successful', 201);
+};
+
+export const meController = async (req: Request, res: Response): Promise<void> => {
+	if (!req.auth?.userId) {
+		throw new AppError('Authentication required', 401);
+	}
+
+	const user = await prisma.user.findUnique({
+		where: { id: req.auth.userId },
+		select: {
+			id: true,
+			email: true,
+			phone: true,
+			role: true,
+			firstName: true,
+			lastName: true,
+			emailVerified: true,
+			phoneVerified: true,
+			mfaEnabled: true,
+		},
+	});
+
+	if (!user) {
+		throw new AppError('User not found', 404);
+	}
+
+	sendSuccess(
+		res,
+		{
+			id: String(user.id),
+			email: user.email,
+			phone: user.phone,
+			role: user.role,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			emailVerified: user.emailVerified,
+			phoneVerified: user.phoneVerified,
+			mfaEnabled: user.mfaEnabled,
+		},
+		'Authenticated user fetched',
+	);
 };
 
 export const signupWithEmailController = async (req: Request, res: Response): Promise<void> => {

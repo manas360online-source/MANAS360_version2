@@ -1,83 +1,76 @@
-import React, { createContext, useContext, useCallback, useEffect, useRef } from 'react';
-import useAuthToken from '../hooks/useAuthToken';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  login as loginApi,
+  logout as logoutApi,
+  me as meApi,
+  register as registerApi,
+  type AuthUser,
+} from '../api/auth';
 
 type AuthContextValue = {
-  token: string | null;
-  setToken: (t: string | null) => void;
-  login: (t: string) => void;
-  logout: () => void;
+  user: AuthUser | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  login: (identifier: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name?: string) => Promise<void>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { token, setToken } = useAuthToken();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback((t: string) => {
-    setToken(t);
-  }, [setToken]);
-
-  const logout = useCallback(() => {
-    setToken(null);
-    localStorage.removeItem('accessToken');
-  }, [setToken]);
-
-  // automatic token refresh: decode JWT exp and schedule a refresh
-  const refreshTimerRef = useRef<number | null>(null);
-  function parseJwtExp(jwt: string | null): number | null {
-    if (!jwt) return null;
+  const checkAuth = useCallback(async () => {
     try {
-      const parts = jwt.split('.');
-      if (parts.length < 2) return null;
-      const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      const json = JSON.parse(decodeURIComponent(atob(payload).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join('')));
-      if (typeof json.exp === 'number') return json.exp * 1000;
-      return null;
-    } catch (e) {
-      return null;
+      const currentUser = await meApi();
+      setUser(currentUser);
+    } catch {
+      setUser(null);
+    } finally {
+      setLoading(false);
     }
-  }
-
-  async function doRefresh() {
-    try {
-      const res = await fetch('/auth/refresh', { method: 'POST', credentials: 'include' });
-      if (!res.ok) return;
-      const data = await res.json();
-      if (data && data.accessToken) {
-        setToken(data.accessToken);
-      }
-    } catch (e) {
-      // ignore; next schedule will retry
-    }
-  }
+ 	}, []);
 
   useEffect(() => {
-    // clear prior timer
-    if (refreshTimerRef.current) {
-      window.clearTimeout(refreshTimerRef.current);
-      refreshTimerRef.current = null;
+    void checkAuth();
+  }, [checkAuth]);
+
+  const login = useCallback(async (identifier: string, password: string) => {
+    const loggedInUser = await loginApi({ identifier, password });
+    setUser(loggedInUser);
+  }, []);
+
+  const register = useCallback(async (email: string, password: string, name?: string) => {
+    await registerApi({ email, password, name });
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await logoutApi();
+    } catch {
+      // keep frontend state consistent even if backend session already expired
+    } finally {
+      setUser(null);
     }
-    if (!token) return;
-    const exp = parseJwtExp(token);
-    if (!exp) return;
-    const now = Date.now();
-    // schedule refresh 60s before expiry or immediately if expiry passed
-    const msBefore = Math.max(0, exp - now - 60000);
-    refreshTimerRef.current = window.setTimeout(() => {
-      void doRefresh();
-    }, msBefore) as unknown as number;
+  }, []);
 
-    return () => {
-      if (refreshTimerRef.current) {
-        window.clearTimeout(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
-    };
-  }, [token, setToken]);
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      user,
+      loading,
+      isAuthenticated: !!user,
+      login,
+      register,
+      logout,
+      checkAuth,
+    }),
+    [user, loading, login, register, logout, checkAuth],
+  );
 
-  return <AuthContext.Provider value={{ token, setToken, login, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
