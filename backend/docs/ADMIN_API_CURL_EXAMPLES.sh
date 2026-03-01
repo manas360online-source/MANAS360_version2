@@ -78,7 +78,7 @@ echo -e "\n${YELLOW}---${NC}\n"
 # ============================================================================
 # 6. GET SINGLE USER
 # ============================================================================
-echo -e "${GREEN}6. Get Single User (Replace USER_ID with actual MongoDB ObjectId)${NC}"
+echo -e "${GREEN}6. Get Single User (Replace USER_ID with actual PostgreSQL UUID)${NC}"
 curl -X GET \
   "${BASE_URL}/users/650f8c9e7d9f8b1a2c3d4e5f" \
   -H "Authorization: Bearer ${TOKEN}" \
@@ -269,9 +269,9 @@ echo -e "${YELLOW}ERROR TEST 5: Invalid Pagination Parameters (Should return 400
 echo -e "\n${YELLOW}---${NC}\n"
 
 # ============================================================================
-# ERROR 6: Invalid ObjectId Format
+# ERROR 6: Invalid UUID Format
 # ============================================================================
-echo -e "${YELLOW}ERROR TEST 6: Invalid ObjectId Format (Should return 400)${NC}"
+echo -e "${YELLOW}ERROR TEST 6: Invalid UUID Format (Should return 400)${NC}"
 # curl -X GET \
 #   "${BASE_URL}/users/not_a_valid_id" \
 #   -H "Authorization: Bearer ${TOKEN}" \
@@ -284,7 +284,7 @@ echo -e "${YELLOW}ERROR TEST 6: Invalid ObjectId Format (Should return 400)${NC}
 #       "errors": [
 #         {
 #           "field": "id",
-#           "message": "Invalid MongoDB ObjectId format"
+#           "message": "Invalid PostgreSQL UUID format"
 #         }
 #       ]
 #     }
@@ -389,7 +389,7 @@ echo "  → Format: 'Authorization: Bearer <token>'"
 echo ""
 echo "Issue: 403 Forbidden"
 echo "  → User account doesn't have admin role"
-echo "  → Verify role in database: db.users.findOne({_id: ObjectId('...')})"
+echo "  → Verify role in database: db.users.findOne({_id: UUID('...')})"
 echo "  → Check role is exactly 'admin' (case-sensitive)"
 echo ""
 echo "Issue: 410 Gone"
@@ -400,7 +400,7 @@ echo ""
 echo "Issue: 400 Bad Request"
 echo "  → Check parameter types (page should be integer, not string)"
 echo "  → Verify enum values (role must be: patient, therapist, admin)"
-echo "  → Validate ObjectId format for path parameters"
+echo "  → Validate UUID format for path parameters"
 echo ""
 echo "Issue: 500 Internal Server Error"
 echo "  → Check server logs for details"

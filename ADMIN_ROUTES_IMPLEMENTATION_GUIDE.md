@@ -230,7 +230,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
 
 ---
 
-### Scenario 7: Invalid Route Parameter (Bad ObjectId) ❌
+### Scenario 7: Invalid Route Parameter (Bad UUID) ❌
 
 **Request**:
 ```bash
@@ -245,7 +245,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/users/invalid-id-123" \
   "success": false,
   "message": "Validation failed",
   "statusCode": 400,
-  "validationError": "Id must be a valid MongoDB ObjectId",
+  "validationError": "Id must be a valid PostgreSQL UUID",
   "timestamp": "2026-02-27T10:30:00Z"
 }
 ```

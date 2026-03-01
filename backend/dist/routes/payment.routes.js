@@ -1,1 +1,12 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const payment_controller_1 = require("../controllers/payment.controller");
+const auth_middleware_1 = require("../middleware/auth.middleware");
+const rbac_middleware_1 = require("../middleware/rbac.middleware");
+const rateLimiter_middleware_1 = require("../middleware/rateLimiter.middleware");
+const validate_middleware_1 = require("../middleware/validate.middleware");
+const router = (0, express_1.Router)();
+router.post('/sessions', auth_middleware_1.requireAuth, (0, rbac_middleware_1.requireRole)('patient'), rateLimiter_middleware_1.paymentRateLimiter, (0, validate_middleware_1.asyncHandler)(payment_controller_1.createSessionPaymentController));
+router.post('/sessions/:id/complete', auth_middleware_1.requireAuth, (0, rbac_middleware_1.requireRole)('therapist'), rateLimiter_middleware_1.paymentRateLimiter, (0, validate_middleware_1.asyncHandler)(payment_controller_1.completeFinancialSessionController));
+exports.default = router;

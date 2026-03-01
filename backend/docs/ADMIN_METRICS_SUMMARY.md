@@ -2,7 +2,7 @@
 
 ## 🎯 Overview
 
-The **GET /api/v1/admin/metrics** endpoint provides comprehensive platform metrics using MongoDB aggregation pipelines with optimized performance for datasets up to 10M+ records.
+The **GET /api/v1/admin/metrics** endpoint provides comprehensive platform metrics using PostgreSQL aggregation pipelines with optimized performance for datasets up to 10M+ records.
 
 ---
 
@@ -149,9 +149,9 @@ getMetrics() Service
 
 ---
 
-## ✅ MongoDB Indexes Required
+## ✅ PostgreSQL Indexes Required
 
-Run these commands in your MongoDB instance:
+Run these commands in your PostgreSQL instance:
 
 ```javascript
 // Users Collection
@@ -293,7 +293,7 @@ db.collection.aggregate([
 **Check**:
 1. Confirm all indexes are created
 2. Run `db.collection.find().explain()`
-3. Check MongoDB profiler for slow queries
+3. Check PostgreSQL profiler for slow queries
 
 ### Issue: Zero Revenue
 **Check**:
@@ -322,7 +322,7 @@ db.collection.aggregate([
 
 ## ✨ Key Features
 
-- ✅ **Efficient Queries**: Uses MongoDB aggregation & countDocuments
+- ✅ **Efficient Queries**: Uses PostgreSQL aggregation & countDocuments
 - ✅ **Parallel Execution**: 6 queries run concurrently
 - ✅ **Indexed**: All filter conditions backed by indexes
 - ✅ **Fast**: 30-200ms response time
@@ -335,7 +335,7 @@ db.collection.aggregate([
 
 ## 🔄 Integration Checklist
 
-- [ ] Create MongoDB indexes
+- [ ] Create PostgreSQL indexes
 - [ ] Deploy backend changes
 - [ ] Test endpoint with cURL
 - [ ] Test with admin token

@@ -222,7 +222,7 @@ Authorization: Bearer YOUR_JWT_TOKEN
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `id` | string | Yes | User's MongoDB ObjectId (_id field) |
+| `id` | string | Yes | User's PostgreSQL UUID (_id field) |
 
 ### Example Requests
 
@@ -330,7 +330,7 @@ curl -X GET "https://api.manas360.com/api/v1/admin/users/$PATIENT_ID" \
 
 ### Error Responses
 
-#### 400 Bad Request - Invalid ObjectId Format
+#### 400 Bad Request - Invalid UUID Format
 ```json
 {
   "success": false,
@@ -338,7 +338,7 @@ curl -X GET "https://api.manas360.com/api/v1/admin/users/$PATIENT_ID" \
   "errors": [
     {
       "field": "id",
-      "message": "id must be a valid MongoDB ObjectId"
+      "message": "id must be a valid PostgreSQL UUID"
     }
   ]
 }
@@ -424,7 +424,7 @@ The following sensitive fields are **always excluded** from responses:
 ### Performance Optimizations
 
 1. **Parallel Queries** - Count and fetch operations run concurrently
-2. **Lean Queries** - `.lean()` returns plain objects (not Mongoose documents)
+2. **Lean Queries** - `.lean()` returns plain objects (not Prisma documents)
 3. **Projection** - Only selected fields are retrieved from database
 4. **Indexing** - `role` and `isDeleted` are indexed for fast filtering
 

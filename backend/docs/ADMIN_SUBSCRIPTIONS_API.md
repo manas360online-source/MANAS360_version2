@@ -99,7 +99,7 @@ Content-Type: application/json
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `_id` | string | Subscription unique identifier (MongoDB ObjectId) |
+| `_id` | string | Subscription unique identifier (PostgreSQL UUID) |
 | `user.id` | string | User ID of subscription holder |
 | `user.name` | string \| null | User's full name |
 | `user.email` | string | User's email address |
@@ -172,7 +172,7 @@ Content-Type: application/json
 
 ```typescript
 {
-  userId: ObjectId,                    // Reference to User
+  userId: UUID,                    // Reference to User
   planType: 'basic' | 'premium' | 'pro',
   planName: string,                    // e.g., "Premium Plan"
   status: 'active' | 'expired' | 'cancelled' | 'paused',
@@ -185,7 +185,7 @@ Content-Type: application/json
   autoRenew: boolean,                  // Default: true
   cancelledAt?: Date,                  // When cancelled
   cancelledReason?: string,            // Cancellation reason
-  paymentMethodId?: ObjectId,          // Payment method reference
+  paymentMethodId?: UUID,          // Payment method reference
   notes?: string,                      // Admin notes
   timestamps: {
     createdAt: Date,

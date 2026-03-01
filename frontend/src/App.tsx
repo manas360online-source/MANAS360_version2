@@ -7,12 +7,12 @@ import { ResultsPage } from './pages/Results'
 import { CrisisPage } from './pages/Crisis'
 import { OnboardingName } from './pages/OnboardingName'
 import { OnboardingEmail } from './pages/OnboardingEmail'
-import { HomePage } from './pages/Home'
 import SessionSocketDemo from './components/SessionSocketDemo'
 import TherapistDashboard from './components/TherapistDashboard'
 import AnalyticsPage from './pages/therapist/AnalyticsPage'
 import LoginWidget from './components/LoginWidget'
 import SessionDetailPage from './pages/therapist/SessionDetailPage'
+import ProtectedRoute from './components/ProtectedRoute'
 
 interface AssessmentData {
   symptoms: string[];
@@ -42,20 +42,43 @@ function App() {
     <AuthProvider>
       <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/home" element={<HomePage />} />
       <Route path="/assessment" element={<Assessment onSubmit={handleAssessmentSubmit} />} />
       <Route path="/results" element={<ResultsPage data={assessmentData} />} />
       <Route path="/crisis" element={<CrisisPage />} />
       <Route path="/onboarding/name" element={<OnboardingName onNext={handleOnboardingName} />} />
       <Route path="/onboarding/email" element={<OnboardingEmail userName={userName} />} />
-        <Route path="/session-demo" element={
-          <SessionSocketDemo sessionId={new URLSearchParams(window.location.hash.split('?')[1]).get('sessionId')} />
-        } />
-        <Route path="/therapist-dashboard" element={
-          <TherapistDashboard sessionId={new URLSearchParams(window.location.hash.split('?')[1]).get('sessionId')} />
-        } />
-        <Route path="/therapist/analytics" element={<AnalyticsPage />} />
-        <Route path="/therapist/sessions/:id" element={<SessionDetailPage />} />
+        <Route
+          path="/session-demo"
+          element={
+            <ProtectedRoute>
+              <SessionSocketDemo sessionId={new URLSearchParams(window.location.hash.split('?')[1]).get('sessionId')} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/therapist-dashboard"
+          element={
+            <ProtectedRoute>
+              <TherapistDashboard sessionId={new URLSearchParams(window.location.hash.split('?')[1]).get('sessionId')} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/therapist/analytics"
+          element={
+            <ProtectedRoute>
+              <AnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/therapist/sessions/:id"
+          element={
+            <ProtectedRoute>
+              <SessionDetailPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/login" element={<LoginWidget />} />
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

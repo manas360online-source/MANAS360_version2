@@ -4,6 +4,9 @@ import { env } from '../config/env';
 
 const redisUrl = process.env.REDIS_URL || env.redisUrl || 'redis://127.0.0.1:6379';
 const redis = createClient({ url: redisUrl });
+redis.on('error', (error) => {
+  console.warn('[analytics.service] Redis unavailable, cache layer degraded', error);
+});
 redis.connect().catch(() => {});
 
 export type DateRange = { from: string; to: string };

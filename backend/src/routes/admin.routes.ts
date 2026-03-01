@@ -27,7 +27,7 @@ router.get('/users', requireAuth, requireRole('admin'), ...validateAdminListUser
  * GET /api/v1/admin/users/:id
  * Get a single user by ID
  * Route parameters:
- *   - id: MongoDB ObjectId
+ *   - id: user identifier
  */
 router.get('/users/:id', requireAuth, requireRole('admin'), ...validateAdminGetUserIdParam, asyncHandler(getUserController));
 
@@ -36,7 +36,7 @@ router.get('/users/:id', requireAuth, requireRole('admin'), ...validateAdminGetU
  * Verify therapist credentials
  * Sets isVerified = true and records verification timestamp
  * Route parameters:
- *   - id: Therapist Profile MongoDB ObjectId
+ *   - id: therapist identifier
  * Response: Updated therapist profile summary
  */
 router.patch(

@@ -1,14 +1,14 @@
 # Admin API Integration Tests - Mock Strategy
 
 ## Overview
-This document outlines the mocking strategy for Admin API integration tests using MongoMemoryServer, Jest, and Supertest.
+This document outlines the mocking strategy for Admin API integration tests using PostgreSQLFixture, Jest, and Supertest.
 
 ---
 
 ## 1. Database Mocking Strategy
 
-### MongoMemoryServer
-- **Purpose**: In-memory MongoDB instance for isolated, fast test execution
+### PostgreSQLFixture
+- **Purpose**: In-memory PostgreSQL instance for isolated, fast test execution
 - **Setup**: Initialized in `beforeAll()` hook before any tests run
 - **Teardown**: Stopped in `afterAll()` hook after all tests complete
 - **Isolation**: Each test clears database using `clearTestDB()` to ensure test independence
@@ -22,12 +22,12 @@ This document outlines the mocking strategy for Admin API integration tests usin
 ```typescript
 // Setup - Runs once before all tests
 beforeAll(async () => {
-  await connectToTestDB(); // Starts MongoMemoryServer, connects Mongoose
+  await connectToTestDB(); // Starts PostgreSQLFixture, connects Prisma
 });
 
 // Teardown - Runs once after all tests
 afterAll(async () => {
-  await disconnectFromTestDB(); // Closes connection, stops MongoMemoryServer
+  await disconnectFromTestDB(); // Closes connection, stops PostgreSQLFixture
 });
 
 // Between tests - Clear data for isolation
@@ -98,7 +98,7 @@ const invalidToken = generateInvalidToken(userId);
 ### Token Payload Structure
 ```typescript
 {
-  userId: 'valid-mongodb-objectid',
+  userId: 'valid-postgresql-id',
   sessionId: 'test-session-id',
   jti: 'test-jti',
   iat: 1645000000,
@@ -215,7 +215,7 @@ const token = generateAdminToken(deletedUser._id);
 
 ### Testing Data Validation Failures
 ```typescript
-// Invalid ObjectId format
+// Invalid UUID format
 .get('/api/v1/admin/users/invalid-id')
 // → 400 Bad Request
 
@@ -272,7 +272,7 @@ it('✓ Respects max limit of 50 items', async () => {
 ## 8. Mocking Checklist
 
 ### ✅ What IS Mocked
-- Database (MongoMemoryServer - in-memory)
+- Database (PostgreSQLFixture - in-memory)
 - JWT tokens (generated with test secret)
 - User authentication state (via token)
 - Test data (factories instead of hardcoded)
@@ -350,13 +350,13 @@ npm test -- tests/admin/admin.integration.test.ts -t "List Users"
 
 | Concern | Solution |
 |---------|----------|
-| **Slow test startup** | MongoMemoryServer cached on first run (~2-3s) |
+| **Slow test startup** | PostgreSQLFixture cached on first run (~2-3s) |
 | **Slow test execution** | Tests run in `--runInBand` (serial) to avoid conflicts |
 | **Large dataset tests** | Clear DB between tests to prevent memory growth |
 | **Token generation overhead** | JWT signing is cached, minimal overhead |
 
 ### Typical Test Execution Time
-- First run: 5-7 seconds (MongoMemoryServer download + cache)
+- First run: 5-7 seconds (PostgreSQLFixture download + cache)
 - Subsequent runs: 2-3 seconds per full test suite
 - Individual test: 50-200ms
 
@@ -364,11 +364,11 @@ npm test -- tests/admin/admin.integration.test.ts -t "List Users"
 
 ## 12. Troubleshooting Guide
 
-### Issue: MongoMemoryServer fails to download
-**Solution**: Run offline or provide manual MongoDB binary path
+### Issue: PostgreSQLFixture fails to download
+**Solution**: Run offline or provide manual PostgreSQL binary path
 ```typescript
-const mongoServer = await MongoMemoryServer.create({
-  binary: { downloadDir: '/path/to/mongodb' }
+const fixtureServer = await PostgreSQLFixture.create({
+  binary: { downloadDir: '/path/to/test-db-binary' }
 });
 ```
 
@@ -380,9 +380,9 @@ const mongoServer = await MongoMemoryServer.create({
 **Cause**: JWT_ACCESS_SECRET mismatch
 **Solution**: Ensure `setup.ts` sets correct test secret
 
-### Issue: ObjectId validation errors
-**Cause**: Using string instead of MongoDB ObjectId
-**Solution**: Use `._id.toString()` when extracting from documents
+### Issue: UUID validation errors
+**Cause**: Using string instead of PostgreSQL UUID
+**Solution**: Ensure UUID values are generated and persisted as canonical strings
 
 ---
 
@@ -390,7 +390,7 @@ const mongoServer = await MongoMemoryServer.create({
 
 | Aspect | Approach |
 |--------|----------|
-| **Database** | MongoMemoryServer (in-memory, isolated) |
+| **Database** | PostgreSQLFixture (in-memory, isolated) |
 | **Test Data** | Factory functions with sensible defaults |
 | **Auth** | JWT token helpers (no real auth service) |
 | **HTTP** | Supertest (in-process requests) |

@@ -244,7 +244,7 @@ Before deploying to production:
 
 ### Prerequisites
 - Node.js 18+ with npm
-- MongoDB with proper indexes
+- PostgreSQL with Prisma migrations applied
 - Environment variables configured (JWT secret, DB URI)
 
 ### Steps
@@ -256,7 +256,8 @@ Before deploying to production:
    curl -X GET https://api.manas360.com/api/v1/admin/users \
      -H "Authorization: Bearer $ADMIN_TOKEN"
    ```
-5. Monitor for errors (401, 403, 422, 500)
+5. Monitor for errors (401, 403, 422, 500, 501)
+6. Note: `PATCH /api/v1/admin/therapists/:id/verify` is temporarily disabled during Prisma migration
 
 ### Rollback
 If issues occur:
@@ -376,7 +377,7 @@ TOKEN=$(curl -X POST https://api.manas360.com/api/auth/login \
 
 ### 403 Forbidden
 **Cause:** User doesn't have admin role
-**Solution:** Verify user in database has `role = 'admin'` and `isDeleted = false`
+**Solution:** Verify admin user record has `role = 'admin'` and `isDeleted = false`
 
 ### 422 Unprocessable Entity
 **Cause:** Invalid query parameters
@@ -388,11 +389,15 @@ TOKEN=$(curl -X POST https://api.manas360.com/api/auth/login \
 
 ### 404 Not Found
 **Cause:** User ID doesn't exist (for GET by ID)
-**Solution:** Verify ObjectId is valid and user exists
+**Solution:** Verify user ID is valid and user exists
 
 ### 500 Internal Server Error
 **Cause:** Server error
-**Solution:** Check server logs, verify database connection
+**Solution:** Check server logs, verify PostgreSQL + Prisma connectivity
+
+### 501 Not Implemented
+**Cause:** Endpoint intentionally disabled during Prisma migration
+**Solution:** Follow `PRISMA_REENABLE_CHECKLIST.md` to complete missing model + service migrations
 
 ---
 

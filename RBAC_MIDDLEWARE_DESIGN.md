@@ -201,7 +201,7 @@ clearRoleCache()
 ```javascript
 // backend/prisma/schema.prisma
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(auto()) @map("_id") @db.UUID
   role      String   @default("patient") // Add index
   isDeleted Boolean  @default(false)     // Add index
   

@@ -226,10 +226,10 @@
 - [ ] Data encryption in transit (HTTPS)
 
 ### Input Validation ✅
-- [x] Invalid ObjectId format → 400
+- [x] Invalid UUID format → 400
 - [x] Missing required params → validated
 - [x] Out-of-range pagination → handled
-- [ ] SQL injection prevention (MongoDB)
+- [ ] SQL injection prevention (PostgreSQL)
 - [ ] XSS prevention
 - [ ] Rate limiting
 

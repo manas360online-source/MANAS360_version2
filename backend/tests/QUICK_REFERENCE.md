@@ -75,7 +75,7 @@ npm test -- tests/admin/admin.integration.test.ts --coverage
 
 ```typescript
 // Lifecycle
-connectToTestDB()         // Start in-memory MongoDB
+connectToTestDB()         // Start in-memory PostgreSQL
 disconnectFromTestDB()    // Stop & cleanup
 clearTestDB()             // Clear collections
 
@@ -110,7 +110,7 @@ generateInvalidToken()    // Wrong secret (401)
 
 ## ⚡ Key Features
 
-✅ **MongoMemoryServer**: In-memory database (no external dependencies)  
+✅ **PostgreSQLFixture**: In-memory database (no external dependencies)  
 ✅ **Supertest**: HTTP testing without real server startup  
 ✅ **Factory Pattern**: Reusable, flexible test data  
 ✅ **JWT Helpers**: Test auth failures independently  
@@ -139,11 +139,11 @@ generateInvalidToken()    // Wrong secret (401)
   └─ 3 edge case tests (business logic)
 
 ⏱️  Execution Time
-  ├─ First run: 5-7 seconds (MongoMemoryServer setup)
+  ├─ First run: 5-7 seconds (PostgreSQLFixture setup)
   └─ Subsequent: 2-3 seconds per run
 
 💾 Database
-  ├─ In-memory: MongoMemoryServer
+  ├─ In-memory: PostgreSQLFixture
   ├─ Auto-cleanup: Between each test
   └─ Isolation: Each test gets fresh DB state
 ```
@@ -152,7 +152,7 @@ generateInvalidToken()    // Wrong secret (401)
 
 ### 1. Install Dependencies (Already Done)
 ```bash
-npm install --save-dev jest supertest mongodb-memory-server
+npm install --save-dev jest supertest postgresql-test-fixture
 ```
 
 ### 2. Run Tests
@@ -287,7 +287,7 @@ Best Practices
 
 ## 📞 Troubleshooting
 
-### "MongoMemoryServer download failed"
+### "PostgreSQLFixture download failed"
 → Check internet connection or set offline mode
 
 ### "Tests timeout"

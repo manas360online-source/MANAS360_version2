@@ -52,6 +52,23 @@ app.use(
 // BODY PARSERS
 // ============================================
 
+app.disable('x-powered-by');
+app.use(helmet());
+app.use(
+	cors({
+		origin: env.corsOrigin,
+		credentials: true,
+	}),
+);
+app.use(
+	express.json({
+		limit: '1mb',
+		verify: (req, _res, buf) => {
+			(req as any).rawBody = buf.toString('utf8');
+		},
+	}),
+);
+app.use(express.urlencoded({ extended: true }));
 // Raw body for webhooks (signature verification)
 app.use(
   '/api/webhooks',

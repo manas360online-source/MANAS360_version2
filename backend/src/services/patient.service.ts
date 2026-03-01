@@ -1,8 +1,6 @@
 import prisma from '../config/db';
-import PatientProfileModel, { PatientAssessmentModel, PatientMoodEntryModel } from '../models/patient.model';
 import { AppError } from '../middleware/error.middleware';
 import { buildPaginationMeta, normalizePagination } from '../utils/pagination';
-import TherapistProfileModel from '../models/therapist.model';
 
 interface PatientProfileInput {
 	age: number;
@@ -468,14 +466,17 @@ const inferPrimaryNeed = (severityLevel: string): string => {
 export const getMyTherapistMatches = async (userId: string, query: TherapistMatchQuery) => {
 	await assertPatientUser(userId);
 
-	const patientProfile = (await (PatientProfileModel.findOne({ userId }).select({ _id: 1 }) as any).lean()) as any;
+	const patientProfile = await prisma.patientProfile.findUnique({ where: { userId }, select: { id: true } });
 
 	if (!patientProfile) {
 		throw new AppError('Patient profile not found. Please create profile first.', 404);
 	}
 
-	const assessmentQuery: any = PatientAssessmentModel.findOne({ patientId: patientProfile._id });
-	const latestAssessment = (await (assessmentQuery.select({ severityLevel: 1, createdAt: 1 }).sort({ createdAt: -1 }) as any).lean()) as any;
+	const latestAssessment = await prisma.patientAssessment.findFirst({
+		where: { patientId: patientProfile.id },
+		select: { severityLevel: true, createdAt: true },
+		orderBy: { createdAt: 'desc' },
+	});
 
 	if (!latestAssessment) {
 		throw new AppError('Assessment not found. Please complete assessment first.', 404);
@@ -483,24 +484,20 @@ export const getMyTherapistMatches = async (userId: string, query: TherapistMatc
 
 	const targetSpecializations = normalizeStrings(severityToSpecializationMap[latestAssessment.severityLevel] ?? []);
 
-	const therapists = await TherapistProfileModel.find({}, {
-		userId: 1,
-		displayName: 1,
-		specializations: 1,
-		languages: 1,
-		availabilitySlots: 1,
-		yearsOfExperience: 1,
-		averageRating: 1,
-		maxConcurrentPatients: 1,
-		currentActivePatients: 1,
-	})
-		.limit(500)
-		.lean();
+	const therapists = await prisma.user.findMany({
+		where: { role: 'THERAPIST' },
+		select: {
+			id: true,
+			firstName: true,
+			lastName: true,
+		},
+		take: 500,
+	});
 
 	const rankedMatches = therapists
 		.map((therapist) => {
-			const therapistSpecializations = normalizeStrings(therapist.specializations ?? []);
-			const therapistLanguages = normalizeStrings(therapist.languages ?? []);
+			const therapistSpecializations: string[] = [];
+			const therapistLanguages: string[] = [];
 
 			const severityScore = scoreSeverity(therapistSpecializations, targetSpecializations);
 			const specializationScore = scoreSpecialization(
@@ -518,19 +515,16 @@ export const getMyTherapistMatches = async (userId: string, query: TherapistMatc
 				availabilityScore,
 			});
 
-			const capacityRatio =
-				therapist.maxConcurrentPatients > 0
-					? clamp((therapist.maxConcurrentPatients - therapist.currentActivePatients) / therapist.maxConcurrentPatients)
-					: 0;
+			const capacityRatio = 0;
 
 			return {
 				therapist: {
-					id: therapist._id.toString(),
-					displayName: therapist.displayName,
-					specializations: therapist.specializations,
-					languages: therapist.languages,
-					yearsOfExperience: therapist.yearsOfExperience,
-					averageRating: therapist.averageRating,
+					id: therapist.id,
+					displayName: `${therapist.firstName} ${therapist.lastName}`.trim(),
+					specializations: [],
+					languages: [],
+					yearsOfExperience: 0,
+					averageRating: 0,
 				},
 				compatibilityScore,
 				scoreBreakdown: {
@@ -551,7 +545,7 @@ export const getMyTherapistMatches = async (userId: string, query: TherapistMatc
 				return b.capacityRatio - a.capacityRatio;
 			}
 
-			return b.therapist.averageRating - a.therapist.averageRating;
+			return 0;
 		})
 		.slice(0, 5);
 

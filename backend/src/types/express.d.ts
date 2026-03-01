@@ -5,6 +5,7 @@ declare global {
 		interface Request {
 			user?: { id: string; role?: string } | null;
 			auth?: { userId?: string; sessionId?: string; jti?: string; role?: string } | null;
+			rawBody?: string;
 		}
 	}
 }

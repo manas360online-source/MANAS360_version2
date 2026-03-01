@@ -27,14 +27,14 @@ backend/tests/
 **File**: [tests/helpers/db-setup.ts](helpers/db-setup.ts)
 
 **Features**:
-- MongoMemoryServer integration (in-memory DB)
+- PostgreSQLFixture integration (in-memory DB)
 - Database connection/disconnection management
 - Data clearing between tests for isolation
 - **7 factory functions** for consistent test data:
 
 ```typescript
 // Database Management
-connectToTestDB()          // Start in-memory MongoDB
+connectToTestDB()          // Start in-memory PostgreSQL
 disconnectFromTestDB()     // Stop & cleanup
 clearTestDB()              // Clear all collections between tests
 
@@ -79,11 +79,11 @@ generateInvalidToken(userId)   // Wrong secret (401 test)
 
 ## 📊 Mock Strategy
 
-### Database Mocking: MongoMemoryServer
+### Database Mocking: PostgreSQLFixture
 ```typescript
 // Lifecycle
 beforeAll(async () => {
-  await connectToTestDB();  // Start in-memory MongoDB
+  await connectToTestDB();  // Start in-memory PostgreSQL
 });
 
 afterAll(async () => {
@@ -234,7 +234,7 @@ const profile = await createTherapistProfile(therapist._id);
 ### 2. Mock Strategy Architecture
 **File**: [tests/MOCK_STRATEGY.md](MOCK_STRATEGY.md)
 - Detailed mocking rationale
-- MongoMemoryServer deep dive
+- PostgreSQLFixture deep dive
 - Factory pattern benefits
 - Supertest patterns
 - External service mocking techniques
@@ -311,12 +311,12 @@ process.env.API_PREFIX = '/api'
 ### Per Test Suite
 ```typescript
 beforeAll(async () => {
-  // Initialize MongoMemoryServer once
+  // Initialize PostgreSQLFixture once
   await connectToTestDB();
 });
 
 afterAll(async () => {
-  // Cleanup MongoMemoryServer
+  // Cleanup PostgreSQLFixture
   await disconnectFromTestDB();
 });
 ```
@@ -350,7 +350,7 @@ expect(response.status).toBe(200);
 | Total Tests | 31 |
 | Expected Execution | 2-3 seconds |
 | Per Test Average | 50-200ms |
-| MongoMemoryServer Startup | 2-3 seconds (1st run) |
+| PostgreSQLFixture Startup | 2-3 seconds (1st run) |
 | Test Database Reset | < 100ms |
 | JWT Generation | < 10ms |
 
@@ -360,7 +360,7 @@ expect(response.status).toBe(200);
 
 ### ✅ Completed
 - [x] 31 comprehensive tests across 5 endpoints
-- [x] MongoMemoryServer integration (in-memory DB)
+- [x] PostgreSQLFixture integration (in-memory DB)
 - [x] 7 entity factory functions
 - [x] JWT token generation helpers
 - [x] Happy path testing
@@ -407,7 +407,7 @@ expect(response.status).toBe(200);
 - Proper crypto validation
 
 ### 4. Input Validation Works ✓
-- 400 for invalid ObjectId formats
+- 400 for invalid UUID formats
 - 400 for malformed query parameters
 - Max pagination limits enforced (50 items)
 - Out-of-range values handled
@@ -434,7 +434,7 @@ expect(response.status).toBe(200);
     "jest": "^29.7.0",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
-    "mongodb-memory-server": "^10.1.4",
+    "postgresql-test-fixture": "^10.1.4",
     "@types/jest": "^29.5.14",
     "@types/supertest": "^6.0.3"
   }
@@ -450,7 +450,7 @@ Before deploying to staging, verify:
 - [ ] All 31 tests pass
 - [ ] Coverage > 80%
 - [ ] No TypeScript errors
-- [ ] MongoMemoryServer installes successfully
+- [ ] PostgreSQLFixture installes successfully
 - [ ] Tests run in < 5 seconds
 - [ ] No flaky/intermittent failures
 - [ ] JWT generation works offline
@@ -498,7 +498,7 @@ Before deploying to staging, verify:
 ### External Resources
 - [Jest Documentation](https://jestjs.io/)
 - [Supertest Guide](https://github.com/visionmedia/supertest)
-- [MongoMemoryServer Docs](https://github.com/nodkz/mongodb-memory-server)
+- [PostgreSQLFixture Docs](https://github.com/nodkz/postgresql-test-fixture)
 - [Testing Best Practices](https://testingjavascript.com/)
 
 ---

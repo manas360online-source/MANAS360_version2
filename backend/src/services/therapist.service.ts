@@ -1,11 +1,7 @@
-import TherapistProfileModel from '../models/therapist.model';
-import UserModel from '../models/user.model';
+import { prisma } from '../config/db';
 import { AppError } from '../middleware/error.middleware';
-import TherapistDocumentModel from '../models/therapist-document.model';
-import {
-	getSignedTherapistDocumentUrl,
-	uploadTherapistDocumentToS3,
-} from './s3.service';
+
+const db = prisma as any;
 
 interface TherapistProfileInput {
 	bio: string;
@@ -39,17 +35,16 @@ const minuteToTime = (minute: number): string => {
 };
 
 const assertTherapistUser = async (userId: string) => {
-	const user = await UserModel.findById(userId).select('_id role isDeleted name').lean();
+	const user = await db.user.findUnique({
+		where: { id: userId },
+		select: { id: true, role: true, firstName: true, lastName: true },
+	});
 
 	if (!user) {
 		throw new AppError('User not found', 404);
 	}
 
-	if (user.isDeleted) {
-		throw new AppError('User account is deleted', 410);
-	}
-
-	if (user.role !== 'therapist') {
+	if (String(user.role) !== 'THERAPIST') {
 		throw new AppError('Therapist role required', 403);
 	}
 
@@ -93,69 +88,14 @@ const toSafeProfile = (profile: {
 });
 
 export const createTherapistProfile = async (userId: string, input: TherapistProfileInput) => {
-	const user = await assertTherapistUser(userId);
-
-	const existingProfile = await TherapistProfileModel.findOne({ userId }).select({ _id: 1 }).lean();
-	if (existingProfile) {
-		throw new AppError('Therapist profile already exists', 409);
-	}
-
-	const created = await TherapistProfileModel.create({
-		userId,
-		displayName: user.name?.trim() || 'Therapist',
-		bio: input.bio.trim(),
-		specializations: normalizeArray(input.specializations),
-		languages: normalizeArray(input.languages),
-		yearsOfExperience: input.yearsOfExperience,
-		consultationFee: input.consultationFee,
-		availabilitySlots: input.availabilitySlots,
-	});
-
-	const profile = await TherapistProfileModel.findById(created._id)
-		.select({
-			displayName: 1,
-			bio: 1,
-			specializations: 1,
-			languages: 1,
-			yearsOfExperience: 1,
-			consultationFee: 1,
-			availabilitySlots: 1,
-			averageRating: 1,
-			createdAt: 1,
-			updatedAt: 1,
-		})
-		.lean();
-
-	if (!profile) {
-		throw new AppError('Therapist profile not found', 404);
-	}
-
-	return toSafeProfile(profile);
+	await assertTherapistUser(userId);
+	void input;
+	throw new AppError('Therapist profile creation is unavailable until therapist profile Prisma models are introduced', 501);
 };
 
 export const getMyTherapistProfile = async (userId: string) => {
 	await assertTherapistUser(userId);
-
-	const profile = await TherapistProfileModel.findOne({ userId })
-		.select({
-			displayName: 1,
-			bio: 1,
-			specializations: 1,
-			languages: 1,
-			yearsOfExperience: 1,
-			consultationFee: 1,
-			availabilitySlots: 1,
-			averageRating: 1,
-			createdAt: 1,
-			updatedAt: 1,
-		})
-		.lean();
-
-	if (!profile) {
-		throw new AppError('Therapist profile not found', 404);
-	}
-
-	return toSafeProfile(profile);
+	throw new AppError('Therapist profile retrieval is unavailable until therapist profile Prisma models are introduced', 501);
 };
 
 export const uploadMyTherapistDocument = async (
@@ -164,36 +104,7 @@ export const uploadMyTherapistDocument = async (
 	file: { buffer: Buffer; mimetype: string; size: number },
 ) => {
 	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select({ _id: 1 }).lean();
-	if (!therapistProfile) {
-		throw new AppError('Therapist profile not found. Please create profile first.', 404);
-	}
-
-	const uploadResult = await uploadTherapistDocumentToS3({
-		therapistUserId: userId,
-		documentType: payload.type,
-		buffer: file.buffer,
-		mimeType: file.mimetype,
-	});
-
-	const document = await TherapistDocumentModel.create({
-		therapistId: therapistProfile._id,
-		fileUrl: uploadResult.objectUrl,
-		objectKey: uploadResult.objectKey,
-		type: payload.type,
-		mimeType: file.mimetype,
-		sizeBytes: file.size,
-		uploadedAt: new Date(),
-	});
-
-	const signedUrl = await getSignedTherapistDocumentUrl(uploadResult.objectKey);
-
-	return {
-		documentId: String(document._id),
-		type: document.type,
-		fileUrl: document.fileUrl,
-		signedUrl,
-		uploadedAt: document.uploadedAt,
-	};
+	void payload;
+	void file;
+	throw new AppError('Therapist document upload is unavailable until therapist document Prisma models are introduced', 501);
 };

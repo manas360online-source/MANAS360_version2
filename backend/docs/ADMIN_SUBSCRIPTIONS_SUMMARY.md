@@ -103,12 +103,12 @@ curl "http://localhost:3005/api/v1/admin/subscriptions?planType=pro"
 
 ---
 
-## 📊 MongoDB Schema
+## 📊 PostgreSQL Schema
 
 ```typescript
 {
-  _id: ObjectId,
-  userId: ObjectId (unique, indexed),
+  _id: UUID,
+  userId: UUID (unique, indexed),
   planType: 'basic' | 'premium' | 'pro' (indexed),
   planName: string,
   status: 'active' | 'expired' | 'cancelled' | 'paused' (indexed),
@@ -121,7 +121,7 @@ curl "http://localhost:3005/api/v1/admin/subscriptions?planType=pro"
   autoRenew: boolean,
   cancelledAt: Date,
   cancelledReason: string,
-  paymentMethodId: ObjectId,
+  paymentMethodId: UUID,
   notes: string,
   createdAt: Date,
   updatedAt: Date
@@ -152,7 +152,7 @@ curl "http://localhost:3005/api/v1/admin/subscriptions" \
 - ✅ Paginated (page, limit)
 - ✅ Filter by plan type (basic, premium, pro)
 - ✅ Admin-only access via requireAdminRole middleware
-- ✅ Efficient MongoDB queries with indexes
+- ✅ Efficient PostgreSQL queries with indexes
 - ✅ User data populates from reference
 - ✅ Proper error handling (400, 401, 403)
 
@@ -202,7 +202,7 @@ Controller (listSubscriptionsController)
     ↓
 Service (listSubscriptions)
     ↓
-MongoDB Query
+PostgreSQL Query
     ├─ Find with filters
     ├─ Populate user data
     ├─ Paginate
@@ -268,7 +268,7 @@ curl "http://localhost:3005/api/v1/admin/subscriptions" \
 - 🔍 **Filterable**: By plan type and status
 - 📄 **Paginated**: Scalable pagination support
 - 👤 **Rich**: Includes user and plan details
-- 📊 **Indexed**: Optimized MongoDB queries
+- 📊 **Indexed**: Optimized PostgreSQL queries
 - 🛠️ **Documented**: Comprehensive documentation
 
 ---

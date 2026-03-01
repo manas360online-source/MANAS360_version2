@@ -1,7 +1,7 @@
 # Admin Metrics API
 ## GET /api/v1/admin/metrics
 
-Retrieve comprehensive platform metrics using efficient MongoDB aggregation pipelines. This endpoint is designed for admin dashboards, reporting, and KPI tracking.
+Retrieve comprehensive platform metrics using efficient PostgreSQL aggregation pipelines. This endpoint is designed for admin dashboards, reporting, and KPI tracking.
 
 ---
 
@@ -103,7 +103,7 @@ export const getMetrics = async (): Promise<{
   totalRevenue: number;
   activeSubscriptions: number;
 }> => {
-  // Implementation uses MongoDB countDocuments and aggregation pipelines
+  // Implementation uses PostgreSQL countDocuments and aggregation pipelines
   // All queries executed in parallel for maximum efficiency
 }
 ```
@@ -373,7 +373,7 @@ getMetricsController
     ↓
 getMetrics() service
     ↓
-MongoDB aggregation
+PostgreSQL aggregation
 ```
 
 ---
@@ -456,7 +456,7 @@ If aggregation times out with large datasets:
 
 ### Performance Issues
 1. Run `db.collection.stats()` to check index usage
-2. Use MongoDB profiler to find slow queries
+2. Use PostgreSQL profiler to find slow queries
 3. Verify compound indexes are used correctly
 4. Consider denormalization for frequently accessed counts
 
@@ -473,7 +473,7 @@ If aggregation times out with large datasets:
 
 ## 🚀 Deployment Checklist
 
-- [ ] Create required MongoDB indexes
+- [ ] Create required PostgreSQL indexes
 - [ ] Test with production data volume
 - [ ] Verify metrics accuracy against manual counts
 - [ ] Implement caching strategy if needed

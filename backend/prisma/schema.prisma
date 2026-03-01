@@ -48,6 +48,130 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum UserProvider {
+  LOCAL
+  GOOGLE
+  PHONE
+}
+
+// ============ USERS ============
+
+model User {
+  id                            String       @id @default(uuid())
+  name                          String?
+  email                         String?      @unique
+  phone                         String?      @unique
+  firstName                     String       @default("")
+  lastName                      String       @default("")
+  role                          UserRole
+  provider                      UserProvider @default(LOCAL)
+  passwordHash                  String?
+  googleId                      String?      @unique
+  profileImageKey               String?
+  profileImageUrl               String?
+  emailVerified                 Boolean      @default(false)
+  phoneVerified                 Boolean      @default(false)
+  emailVerificationOtpHash      String?
+  emailVerificationOtpExpiresAt DateTime?
+  phoneVerificationOtpHash      String?
+  phoneVerificationOtpExpiresAt DateTime?
+  passwordResetOtpHash          String?
+  passwordResetOtpExpiresAt     DateTime?
+  mfaEnabled                    Boolean      @default(false)
+  mfaSecret                     String?
+  failedLoginAttempts           Int          @default(0)
+  lockUntil                     DateTime?
+  lastLoginAt                   DateTime?
+  passwordChangedAt             DateTime?
+  isDeleted                     Boolean      @default(false)
+  deletedAt                     DateTime?
+  createdAt                     DateTime     @default(now())
+  updatedAt                     DateTime     @updatedAt
+
+  // Relations
+  therapistSessions         CBTSessionTemplate[]      @relation("TherapistSessions")
+  patientSessions           PatientSession[]
+  sessionResponses          PatientSessionResponse[]
+  patientProfile            PatientProfile?
+  therapyBookings           TherapySession[]
+  financialPatientSessions  FinancialSession[]        @relation("FinancialPatient")
+  financialProviderSessions FinancialSession[]        @relation("FinancialProvider")
+  patientLeads              Lead[]                    @relation("LeadPatient")
+  providerLeads             Lead[]                    @relation("LeadProvider")
+  providerWallet            ProviderWallet?           @relation("ProviderWalletOwner")
+  subscriptions             MarketplaceSubscription[] @relation("UserSubscriptions")
+  financialAuditEvents      FinancialAuditLog[]       @relation("UserFinancialAudits")
+  authSessions              AuthSession[]
+  authAuditLogs             AuthAuditLog[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+  @@index([isDeleted])
+  @@map("users")
+}
+
+model AuthSession {
+  id               String   @id @default(uuid())
+  userId           String
+  jti              String   @unique
+  refreshTokenHash String
+  ipAddress        String?
+  userAgent        String?
+  device           String?
+  revokedAt        DateTime?
+  expiresAt        DateTime
+  lastActiveAt     DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([userId, expiresAt])
+  @@map("auth_sessions")
+}
+
+model AuthAuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  event     String
+  status    String
+  email     String?
+  phone     String?
+  ipAddress String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([event, createdAt])
+  @@map("auth_audit_logs")
+}
+
+// ============ CBT SESSION TEMPLATES ============
+
+model CBTSessionTemplate {
+  id                       String        @id @default(uuid())
+  title                    String
+  description              String?
+  isOfficial               Boolean       @default(false)
+  originTemplateId         String?
+  visibility               String        @default("ORG")
+  latestPublishedVersionId String?
+  version                  Int           @default(1)
+  status                   SessionStatus @default(DRAFT)
+  category                 String? // e.g., "Anxiety", "Depression", "Sleep"
+  targetAudience           String? // e.g., "Adults", "Teenagers"
+  estimatedDuration        Int? // in minutes
+
+  // Metadata
+  therapistId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
 enum PaymentType {
   SESSION
   SUBSCRIPTION
@@ -858,4 +982,381 @@ model WebhookLog {
   @@index([processed])
   @@index([createdAt])
   @@map("webhook_logs")
+}
+
+enum FinancialSessionStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum FinancialPaymentStatus {
+  INITIATED
+  PENDING_CAPTURE
+  CAPTURED
+  FAILED
+  REFUNDED
+  PARTIAL_REFUNDED
+}
+
+enum WalletTxnType {
+  CREDIT_PENDING
+  RELEASE
+  DEBIT_PAYOUT
+  REVERSAL
+  ADJUSTMENT
+}
+
+enum WalletTxnStatus {
+  POSTED
+  VOIDED
+}
+
+enum PayoutStatus {
+  REQUESTED
+  APPROVED
+  PAID
+  REJECTED
+  FAILED
+}
+
+enum RevenueType {
+  SESSION
+  SUBSCRIPTION
+  CONTENT
+}
+
+enum SubscriptionDomain {
+  PATIENT
+  PROVIDER
+}
+
+enum SubscriptionPlan {
+  BASIC
+  PREMIUM
+  LEAD_PLAN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum WebhookProvider {
+  RAZORPAY
+}
+
+enum WebhookProcessStatus {
+  RECEIVED
+  PROCESSED
+  SKIPPED_DUPLICATE
+  FAILED
+}
+
+enum FinancialAuditActorType {
+  SYSTEM
+  ADMIN
+  WEBHOOK
+  CRON
+}
+
+enum LeadStatus {
+  AVAILABLE
+  PURCHASED
+  EXPIRED
+  NO_RESPONSE
+  ACCEPTED
+}
+
+enum LeadPaymentStatus {
+  NOT_REQUIRED
+  INITIATED
+  CAPTURED
+  FAILED
+}
+
+model FinancialSession {
+  id                  String                 @id @default(uuid())
+  patientId           String
+  providerId          String
+  status              FinancialSessionStatus @default(PENDING_PAYMENT)
+  expectedAmountMinor BigInt
+  currency            String                 @default("INR")
+  idempotencyKey      String                 @unique
+  razorpayOrderId     String?                @unique
+  confirmedAt         DateTime?
+  completedAt         DateTime?
+  expiredAt           DateTime?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  patient            User                @relation("FinancialPatient", fields: [patientId], references: [id], onDelete: Restrict)
+  provider           User                @relation("FinancialProvider", fields: [providerId], references: [id], onDelete: Restrict)
+  payments           FinancialPayment[]  @relation("SessionPayments")
+  walletTransactions WalletTransaction[] @relation("SessionWalletTransactions")
+  revenueLedger      RevenueLedger[]     @relation("SessionRevenueLedger")
+
+  @@index([patientId, status])
+  @@index([providerId, status])
+  @@index([createdAt])
+  @@map("financial_sessions")
+}
+
+model Lead {
+  id                      String     @id @default(uuid())
+  patientId               String
+  providerId              String?
+  status                  LeadStatus @default(AVAILABLE)
+  matchScore              Int?
+  amountMinor             BigInt
+  currency                String     @default("INR")
+  previewData             Json?
+  patientAcceptanceUntil  DateTime?
+  providerContactedAt     DateTime?
+  purchasedAt             DateTime?
+  acceptedAt              DateTime?
+  expiresAt               DateTime?
+  paymentStatus           LeadPaymentStatus @default(NOT_REQUIRED)
+  razorpayOrderId         String?           @unique
+  razorpayPaymentId       String?           @unique
+  paymentCapturedAt       DateTime?
+  idempotencyKey          String?    @unique
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+
+  patient  User  @relation("LeadPatient", fields: [patientId], references: [id], onDelete: Restrict)
+  provider User? @relation("LeadProvider", fields: [providerId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([providerId, status])
+  @@index([providerId, paymentStatus])
+  @@index([patientId, status])
+  @@index([patientAcceptanceUntil])
+  @@map("leads")
+}
+
+model FinancialPayment {
+  id                    String                 @id @default(uuid())
+  sessionId             String
+  providerId            String
+  providerGateway       String                 @default("RAZORPAY")
+  razorpayOrderId       String                 @unique
+  razorpayPaymentId     String?                @unique
+  status                FinancialPaymentStatus @default(INITIATED)
+  amountMinor           BigInt
+  currency              String                 @default("INR")
+  therapistShareMinor   BigInt                 @default(0)
+  platformShareMinor    BigInt                 @default(0)
+  captureIdempotencyKey String?                @unique
+  capturedAt            DateTime?
+  failedAt              DateTime?
+  failureReason         String?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  session            FinancialSession    @relation("SessionPayments", fields: [sessionId], references: [id], onDelete: Restrict)
+  wallet             ProviderWallet      @relation("WalletPayments", fields: [providerId], references: [providerId], onDelete: Restrict)
+  revenueLedger      RevenueLedger[]     @relation("PaymentRevenueLedger")
+  walletTransactions WalletTransaction[] @relation("PaymentWalletTransactions")
+
+  @@index([sessionId, status])
+  @@index([providerId, status])
+  @@index([razorpayOrderId])
+  @@index([createdAt])
+  @@map("financial_payments")
+}
+
+model ProviderWallet {
+  providerId            String    @id
+  pendingBalanceMinor   BigInt    @default(0)
+  availableBalanceMinor BigInt    @default(0)
+  lifetimeEarningsMinor BigInt    @default(0)
+  isFrozen              Boolean   @default(false)
+  frozenReason          String?
+  frozenAt              DateTime?
+  version               Int       @default(1)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  provider     User                @relation("ProviderWalletOwner", fields: [providerId], references: [id], onDelete: Restrict)
+  transactions WalletTransaction[] @relation("WalletTransactions")
+  payouts      PayoutRequest[]     @relation("WalletPayouts")
+  payments     FinancialPayment[]  @relation("WalletPayments")
+
+  @@index([isFrozen])
+  @@index([updatedAt])
+  @@map("provider_wallets")
+}
+
+model WalletTransaction {
+  id                 String          @id @default(uuid())
+  providerId         String
+  walletTxnType      WalletTxnType
+  status             WalletTxnStatus @default(POSTED)
+  amountMinor        BigInt
+  currency           String          @default("INR")
+  balanceBeforeMinor BigInt
+  balanceAfterMinor  BigInt
+  sessionId          String?
+  paymentId          String?
+  payoutRequestId    String?
+  revenueLedgerId    String?
+  referenceKey       String?         @unique
+  metadata           Json?
+  createdAt          DateTime        @default(now())
+
+  wallet  ProviderWallet    @relation("WalletTransactions", fields: [providerId], references: [providerId], onDelete: Restrict)
+  session FinancialSession? @relation("SessionWalletTransactions", fields: [sessionId], references: [id], onDelete: Restrict)
+  payment FinancialPayment? @relation("PaymentWalletTransactions", fields: [paymentId], references: [id], onDelete: Restrict)
+  payout  PayoutRequest?    @relation("PayoutWalletTransactions", fields: [payoutRequestId], references: [id], onDelete: Restrict)
+  revenue RevenueLedger?    @relation("RevenueWalletTransactions", fields: [revenueLedgerId], references: [id], onDelete: Restrict)
+
+  @@index([providerId, createdAt(sort: Desc)])
+  @@index([walletTxnType, createdAt(sort: Desc)])
+  @@index([sessionId])
+  @@index([paymentId])
+  @@index([payoutRequestId])
+  @@map("wallet_transactions")
+}
+
+model PayoutRequest {
+  id                     String       @id @default(uuid())
+  providerId             String
+  amountMinor            BigInt
+  currency               String       @default("INR")
+  status                 PayoutStatus @default(REQUESTED)
+  minWithdrawalRuleMinor BigInt       @default(10000)
+  requestedAt            DateTime     @default(now())
+  approvedAt             DateTime?
+  paidAt                 DateTime?
+  rejectedAt             DateTime?
+  approvedByAdminId      String?
+  rejectedByAdminId      String?
+  rejectionReason        String?
+  bankReference          String?      @unique
+  idempotencyKey         String       @unique
+
+  provider           ProviderWallet      @relation("WalletPayouts", fields: [providerId], references: [providerId], onDelete: Restrict)
+  walletTransactions WalletTransaction[] @relation("PayoutWalletTransactions")
+
+  @@index([providerId, status, requestedAt(sort: Desc)])
+  @@index([status, requestedAt(sort: Desc)])
+  @@map("payout_requests")
+}
+
+model MarketplaceSubscription {
+  id                     String             @id @default(uuid())
+  userId                 String
+  domain                 SubscriptionDomain
+  plan                   SubscriptionPlan
+  status                 SubscriptionStatus @default(PAST_DUE)
+  providerGateway        String             @default("RAZORPAY")
+  razorpaySubscriptionId String             @unique
+  razorpayPlanId         String
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  nextBillingDate        DateTime?
+  cancelledAt            DateTime?
+  expiredAt              DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  user          User                  @relation("UserSubscriptions", fields: [userId], references: [id], onDelete: Restrict)
+  invoices      SubscriptionInvoice[] @relation("SubscriptionInvoices")
+  revenueLedger RevenueLedger[]       @relation("SubscriptionRevenueLedger")
+
+  @@index([userId, domain, status])
+  @@index([status, nextBillingDate])
+  @@index([createdAt])
+  @@map("marketplace_subscriptions")
+}
+
+model SubscriptionInvoice {
+  id                String    @id @default(uuid())
+  subscriptionId    String
+  razorpayPaymentId String?   @unique
+  amountMinor       BigInt
+  currency          String    @default("INR")
+  billedAt          DateTime
+  nextBillingDate   DateTime?
+  createdAt         DateTime  @default(now())
+
+  subscription MarketplaceSubscription @relation("SubscriptionInvoices", fields: [subscriptionId], references: [id], onDelete: Restrict)
+
+  @@index([subscriptionId, billedAt(sort: Desc)])
+  @@map("subscription_invoices")
+}
+
+model RevenueLedger {
+  id                      String      @id @default(uuid())
+  type                    RevenueType
+  grossAmountMinor        BigInt
+  platformCommissionMinor BigInt
+  providerShareMinor      BigInt
+  taxAmountMinor          BigInt      @default(0)
+  currency                String      @default("INR")
+  referenceId             String
+  paymentId               String?
+  sessionId               String?
+  subscriptionId          String?
+  createdAt               DateTime    @default(now())
+
+  payment            FinancialPayment?        @relation("PaymentRevenueLedger", fields: [paymentId], references: [id], onDelete: Restrict)
+  session            FinancialSession?        @relation("SessionRevenueLedger", fields: [sessionId], references: [id], onDelete: Restrict)
+  subscription       MarketplaceSubscription? @relation("SubscriptionRevenueLedger", fields: [subscriptionId], references: [id], onDelete: Restrict)
+  walletTransactions WalletTransaction[]      @relation("RevenueWalletTransactions")
+
+  @@index([type, createdAt(sort: Desc)])
+  @@index([referenceId, createdAt(sort: Desc)])
+  @@index([sessionId])
+  @@index([subscriptionId])
+  @@map("revenue_ledger")
+}
+
+model WebhookLog {
+  id               String               @id @default(uuid())
+  provider         WebhookProvider      @default(RAZORPAY)
+  eventId          String
+  eventType        String
+  payloadHash      String
+  signature        String
+  isSignatureValid Boolean
+  processStatus    WebhookProcessStatus @default(RECEIVED)
+  firstSeenAt      DateTime             @default(now())
+  processedAt      DateTime?
+  errorMessage     String?
+  sessionId        String?
+  subscriptionId   String?
+  rawPayload       Json
+
+  @@unique([provider, eventId])
+  @@index([eventType, processStatus])
+  @@index([firstSeenAt])
+  @@map("webhook_logs")
+}
+
+model FinancialAuditLog {
+  id         String                  @id @default(uuid())
+  actorType  FinancialAuditActorType
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  reason     String?
+  beforeJson Json?
+  afterJson  Json?
+  traceId    String?
+  createdAt  DateTime                @default(now())
+
+  actor User? @relation("UserFinancialAudits", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@index([actorType, createdAt(sort: Desc)])
+  @@index([traceId])
+  @@map("financial_audit_logs")
 }

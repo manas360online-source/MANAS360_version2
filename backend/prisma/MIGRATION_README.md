@@ -1,39 +1,69 @@
-# Migration: Add CBT Session Versioning
+# Prisma Migration Workflow
 
-This migration adds the `cbt_session_versions` table and snapshot fields to `patient_sessions` so that templates can be versioned and sessions reference immutable snapshots.
+This project uses SQL-first Prisma migrations under `prisma/migrations` and helper scripts in `scripts/`.
 
-Files:
-- `prisma/migrations/20260227_add_versioning/migration.sql` - SQL migration to create table and add columns
-- `scripts/apply_migration.sh` - Helper script to apply the SQL using `psql`
-- `scripts/backfill_versions.ts` - Backfill script to create version rows for templates that lack them
+## Prerequisites
 
-Steps (recommended for staging):
-
-1. Ensure `DATABASE_URL` is set to the target database.
-
-2. Apply the migration:
-
-```bash
-export DATABASE_URL="postgresql://user:pass@host:5432/db"
-bash backend/scripts/apply_migration.sh
-```
-
-3. Build backend and run backfill script to create version rows for existing templates:
+0. Initialize environment variables from template:
 
 ```bash
 cd backend
-npm install --legacy-peer-deps   # if needed
-npm run build
-npm run backfill:versions
+cp .env.example .env
 ```
 
-4. Verify migration:
-   - `SELECT count(*) FROM cbt_session_versions;`
-   - `SELECT template_version_id, count(*) FROM patient_sessions GROUP BY template_version_id;`
+1. Set a valid database connection:
 
-Rollback strategy:
-- Because this migration is additive (creates new table/columns), rollback involves dropping the created columns and table. Always backup your DB before migrating.
+```bash
+export DATABASE_URL="postgresql://user:pass@host:5432/db"
+```
 
-Notes:
-- The migration uses `gen_random_uuid()` to fill `id` defaults. If your Postgres does not have `pgcrypto` enabled, adjust the DDL accordingly.
-- `scripts/backfill_versions.ts` will create initial version rows for templates that do not have versions; run it after applying the migration.
+2. Ensure dependencies are installed in `backend/`.
+
+## Generate an incremental migration
+
+Generate SQL from current live DB state to current `prisma/schema.prisma`:
+
+```bash
+cd backend
+./scripts/generate_incremental_migration.sh financial_core_cutover
+```
+
+This creates:
+
+- `prisma/migrations/<YYYYMMDD>_financial_core_cutover/migration.sql`
+
+## Apply a migration
+
+Apply latest migration automatically:
+
+```bash
+cd backend
+./scripts/apply_migration.sh
+```
+
+Apply a specific migration directory:
+
+```bash
+cd backend
+./scripts/apply_migration.sh 20260301_financial_core_cutover
+```
+
+Apply a specific SQL file:
+
+```bash
+cd backend
+./scripts/apply_migration.sh /absolute/path/to/migration.sql
+```
+
+## Validate Prisma schema/client
+
+```bash
+cd backend
+npm run prisma:validate
+npm run prisma:generate
+```
+
+## Notes
+
+- `prisma/migrations/20260301_financial_core_cutover/migration.sql` is a full baseline (empty schema to current schema) and is suitable for bootstrapping fresh databases.
+- For existing environments, prefer `generate_incremental_migration.sh` to avoid re-creating already-existing objects.

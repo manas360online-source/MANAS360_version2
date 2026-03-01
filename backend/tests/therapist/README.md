@@ -1,11 +1,11 @@
 # Therapist API Integration Tests
 
-A comprehensive integration test suite for the Therapist API using Jest, Supertest, and MongoMemoryServer.
+A comprehensive integration test suite for the Therapist API using Jest, Supertest, and PostgreSQLFixture.
 
 ## Overview
 
 This test suite provides complete coverage of the Therapist API endpoints with:
-- **MongoMemoryServer** for isolated MongoDB database per test suite
+- **PostgreSQLFixture** for isolated PostgreSQL database per test suite
 - **Supertest** for HTTP endpoint testing
 - **JWT token mocking** for authentication/authorization tests
 - **S3 mocking** for file upload operations
@@ -187,18 +187,18 @@ mockS3Service.uploadFile.mockResolvedValueOnce({
 
 ## Key Testing Patterns
 
-### 1. MongoMemoryServer Initialization
+### 1. PostgreSQLFixture Initialization
 ```typescript
-let mongoServer: MongoMemoryServer;
+let dbFixture: PostgreSQLFixture;
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  await mongoose.connect(mongoServer.getUri());
+  dbFixture = await PostgreSQLFixture.create();
+  await Prisma.connect(dbFixture.getUri());
 });
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  await Prisma.disconnect();
+  await dbFixture.stop();
 });
 ```
 
@@ -246,7 +246,7 @@ Time: 14.293 s
 
 ## Notes
 
-- Tests use **isolated MongoDB instances** via MongoMemoryServer
+- Tests use **isolated PostgreSQL instances** via PostgreSQLFixture
 - **S3 uploads** are completely mocked (no AWS calls)
 - **JWT tokens** are created with test secrets
 - **Encryption** is tested end-to-end with real AES-256-GCM
@@ -256,9 +256,9 @@ Time: 14.293 s
 ## Troubleshooting
 
 ### "Port already in use" errors
-Clear any lingering MongoDB instances:
+Clear any lingering PostgreSQL instances:
 ```bash
-pkill -f mongod
+pkill -f postgres
 ```
 
 ### TypeScript compilation errors

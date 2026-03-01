@@ -4,7 +4,7 @@ export const getAnalyticsSummary = async (from?: string, to?: string) => {
   const qp = [] as string[];
   if (from) qp.push(`from=${encodeURIComponent(from)}`);
   if (to) qp.push(`to=${encodeURIComponent(to)}`);
-  const url = `/v1/therapist/me/analytics/summary${qp.length ? '?' + qp.join('&') : ''}`;
+  const url = `/v1/therapists/me/analytics/summary${qp.length ? '?' + qp.join('&') : ''}`;
   const res = await client.get(url);
   return res.data;
 };
@@ -14,7 +14,7 @@ export const getAnalyticsTimeSeries = async (from?: string, to?: string, granula
   if (from) qp.push(`from=${encodeURIComponent(from)}`);
   if (to) qp.push(`to=${encodeURIComponent(to)}`);
   qp.push(`granularity=${encodeURIComponent(granularity)}`);
-  const url = `/v1/therapist/me/analytics/sessions?${qp.join('&')}`;
+  const url = `/v1/therapists/me/analytics/sessions?${qp.join('&')}`;
   const res = await client.get(url);
   return res.data;
 };
@@ -24,7 +24,7 @@ export const getAnalyticsDropoff = async (from?: string, to?: string, templateId
   if (from) qp.push(`from=${encodeURIComponent(from)}`);
   if (to) qp.push(`to=${encodeURIComponent(to)}`);
   if (templateId) qp.push(`templateId=${encodeURIComponent(templateId)}`);
-  const url = `/v1/therapist/me/analytics/dropoff${qp.length ? '?' + qp.join('&') : ''}`;
+  const url = `/v1/therapists/me/analytics/dropoff${qp.length ? '?' + qp.join('&') : ''}`;
   const res = await client.get(url);
   return res.data;
 };

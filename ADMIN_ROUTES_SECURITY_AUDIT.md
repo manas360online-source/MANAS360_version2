@@ -52,7 +52,7 @@ router.get('/users',
 | Authorization | ✅ PROTECTED | Requires `admin` role via `requireAdminRole` |
 | Public Exposure | ✅ SAFE | No bypass possible |
 | Role Bypass | ✅ SAFE | Database validates actual role |
-| Parameter Validation | ✅ COMPLETE | ID param validated as MongoDB ObjectId |
+| Parameter Validation | ✅ COMPLETE | ID param validated as PostgreSQL UUID |
 
 **Route Code**:
 ```typescript
@@ -65,7 +65,7 @@ router.get('/users/:id',
 ```
 
 **Route Parameters**:
-- `id`: User MongoDB ObjectId (validated)
+- `id`: User PostgreSQL UUID (validated)
 
 ---
 
@@ -90,7 +90,7 @@ router.patch(
 ```
 
 **Route Parameters**:
-- `id`: Therapist Profile MongoDB ObjectId (validated)
+- `id`: Therapist Profile PostgreSQL UUID (validated)
 
 **Action**: Sets `isVerified = true` and records verification timestamp
 
@@ -325,7 +325,7 @@ export default router;
 - [x] Invalid roles rejected at middleware creation
 
 ### ✅ Data Protection
-- [x] Route parameters validated (ObjectId format)
+- [x] Route parameters validated (UUID format)
 - [x] Query parameters validated
 - [x] Input sanitization applied
 - [x] Pagination limits enforced (max 50 items)
@@ -477,7 +477,7 @@ GET /api/v1/admin/users/invalid-id HTTP/1.1
 Host: api.example.com
 Authorization: Bearer eyJhbGc....[valid admin token]
 
-# User ID must be valid MongoDB ObjectId
+# User ID must be valid PostgreSQL UUID
 ```
 
 **Response (400 Bad Request)**:
@@ -486,7 +486,7 @@ Authorization: Bearer eyJhbGc....[valid admin token]
   "success": false,
   "message": "Invalid user ID format",
   "statusCode": 400,
-  "validationError": "Id must be a valid MongoDB ObjectId",
+  "validationError": "Id must be a valid PostgreSQL UUID",
   "timestamp": "2026-02-27T10:30:00Z"
 }
 ```
@@ -616,10 +616,10 @@ Authorization: Bearer eyJhbGc....[valid admin token]
 
 **Prevention**:
 ```
-1. Route parameters validated (ObjectId format)
+1. Route parameters validated (UUID format)
 2. Query parameters validated and sanitized
 3. No string concatenation in database queries
-4. Mongoose ORM prevents injection
+4. Prisma ORM prevents injection
 ↓
 ✅ PREVENTED: All input validated before use
 ```

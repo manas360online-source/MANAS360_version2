@@ -12,7 +12,7 @@ export const ExportButton: React.FC<Props> = ({ sessionId }) => {
     setJobId(null);
     setEnqueuing(true);
     try {
-      const res = await fetch(`/api/v1/therapist/me/sessions/${sessionId}/export?format=${format}`, { method: 'GET', credentials: 'include' });
+      const res = await fetch(`/api/v1/therapists/me/sessions/${sessionId}/export?format=${format}`, { method: 'GET', credentials: 'include' });
       const body = await res.json();
       if (res.ok && body.jobId) {
         setJobId(body.jobId);

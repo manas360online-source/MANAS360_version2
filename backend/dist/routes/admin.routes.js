@@ -20,7 +20,7 @@ router.get('/users', auth_middleware_1.requireAuth, (0, rbac_middleware_1.requir
  * GET /api/v1/admin/users/:id
  * Get a single user by ID
  * Route parameters:
- *   - id: MongoDB ObjectId
+ *   - id: user identifier
  */
 router.get('/users/:id', auth_middleware_1.requireAuth, (0, rbac_middleware_1.requireRole)('admin'), ...validate_middleware_1.validateAdminGetUserIdParam, (0, validate_middleware_1.asyncHandler)(admin_controller_1.getUserController));
 /**
@@ -28,7 +28,7 @@ router.get('/users/:id', auth_middleware_1.requireAuth, (0, rbac_middleware_1.re
  * Verify therapist credentials
  * Sets isVerified = true and records verification timestamp
  * Route parameters:
- *   - id: Therapist Profile MongoDB ObjectId
+ *   - id: therapist identifier
  * Response: Updated therapist profile summary
  */
 router.patch('/therapists/:id/verify', auth_middleware_1.requireAuth, (0, rbac_middleware_1.requireRole)('admin'), ...validate_middleware_1.validateTherapistProfileIdParam, (0, validate_middleware_1.asyncHandler)(admin_controller_1.verifyTherapistController));

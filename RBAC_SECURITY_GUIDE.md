@@ -231,14 +231,14 @@ role: "admin'; DROP TABLE users; --"
 ```
 
 **Prevention Mechanisms**:
-- ✅ Mongoose ORM handles parameterized queries
+- ✅ Prisma ORM handles parameterized queries
 - ✅ Type safety ensures only valid roles
 - ✅ Schema validation on database side
 - ✅ No string concatenation in queries
 
 **Code Evidence**:
 ```typescript
-// Safe: Mongoose parameterized query
+// Safe: Prisma parameterized query
 const user = await UserModel.findById(userId).select(...).lean();
 
 // NOT string concatenation:

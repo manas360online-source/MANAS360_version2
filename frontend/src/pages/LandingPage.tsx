@@ -2,14 +2,14 @@ import { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import {
   Header,
-  HeroSection,
+  Hero,
   TrustBar,
   HowItWorks,
+  RoleSection,
   Testimonial,
-  CtaSection,
-  BackgroundParticles,
-  CrisisBanner,
-} from '../components/LandingPage';
+  Footer,
+  QuickAccessRail,
+} from '../components/Landing';
 
 /**
  * LandingPage Component
@@ -119,47 +119,27 @@ export const LandingPage: React.FC = () => {
           })}
         </script>
         {/* Preload hero image for better LCP */}
-        <link rel="preload" as="image" href="/hero.jpg" />
+        <link rel="preload" as="image" href="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1000&auto=format&fit=crop" />
       </Helmet>
 
       {/* Main Page Structure */}
-      <div className="min-h-screen bg-gradient-full relative overflow-x-hidden">
-        {/* Background Particles Animation */}
-        <BackgroundParticles />
+      <div className="relative overflow-x-hidden bg-cream text-charcoal">
+        <Header />
+        <QuickAccessRail />
+        <Hero />
 
-        {/* Main Content */}
-        <div className="relative z-10">
-          {/* Header with Logo */}
-          <Header />
+        <main className="mx-auto w-full max-w-6xl px-4 pb-32 pt-8 md:px-6 md:pt-10">
+          <TrustBar />
+          <HowItWorks />
+          <RoleSection />
+          <Testimonial
+            quote="I was so confused about what I was feeling. MANAS360 helped me understand it was anxiety, not weakness. My therapist has been incredible."
+            author="Priya"
+            location="Bangalore"
+          />
+        </main>
 
-          {/* Main Content Area */}
-          <main className="container-max mx-auto px-4 md:px-6 lg:px-8">
-            {/* Hero Section */}
-            <HeroSection />
-
-            {/* Trust Bar */}
-            <TrustBar />
-
-            {/* How It Works Section */}
-            <HowItWorks />
-
-            {/* Testimonial Section */}
-            <Testimonial
-              quote="I was so confused about what I was feeling. MANAS360 helped me understand it was anxiety, not weakness. My therapist has been incredible."
-              author="Priya"
-              location="Bangalore"
-            />
-
-            {/* Final CTA Section */}
-            <CtaSection />
-          </main>
-        </div>
-
-        {/* Crisis Banner - Fixed Footer */}
-        <CrisisBanner />
-
-        {/* Safe area padding for notched devices */}
-        <div className="h-20 md:h-28 pointer-events-none" />
+        <Footer />
       </div>
     </>
   );

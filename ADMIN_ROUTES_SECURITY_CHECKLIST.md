@@ -16,7 +16,7 @@
   - [x] `requireRole('admin')` present: YES
   - [x] Middleware order correct: YES
   - [x] Parameter validation present: YES
-  - [x] ID format enforced (ObjectId): YES
+  - [x] ID format enforced (UUID): YES
 
 - [x] **PATCH /admin/therapists/:id/verify**
   - [x] `requireAuth` present: YES
@@ -79,7 +79,7 @@
   - Message: "User account is deleted. Please contact support."
 
 - [x] **400 Bad Request**: Validation failed
-  - Expected when: Invalid ObjectId in route param
+  - Expected when: Invalid UUID in route param
   - Expected when: Invalid query parameters
   - Message: Detailed validation error
 
@@ -159,7 +159,7 @@ router.get('/users', requireAuth, requireAdminRole, controller);
 
 ### Validation
 
-- [x] Route parameters validated (ObjectId format)
+- [x] Route parameters validated (UUID format)
 - [x] Query parameters validated
 - [x] Query parameter values sanitized
 - [x] Pagination limits enforced

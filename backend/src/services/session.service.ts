@@ -1,17 +1,14 @@
 import { randomBytes } from 'crypto';
 import { AppError } from '../middleware/error.middleware';
-import PatientProfileModel from '../models/patient.model';
-import TherapistProfileModel from '../models/therapist.model';
 import { prisma } from '../config/db';
 import { publishPlaceholderNotificationEvent } from './notification.service';
 import { buildPaginationMeta, normalizePagination } from '../utils/pagination';
-import UserModel from '../models/user.model';
 import { decryptSessionNote, encryptSessionNote } from '../utils/encryption';
-import { Types } from 'mongoose';
-import SessionResponseNoteModel from '../models/session-response-note.model';
 import { analyticsService } from './analytics.service';
 import { createClient } from 'redis';
 import { env } from '../config/env';
+
+const db = prisma as any;
 
 interface BookSessionInput {
 	therapistId: string;
@@ -63,46 +60,27 @@ const buildBookingReferenceId = (): string => {
 
 const getSlotMinuteOfDay = (date: Date): number => date.getHours() * 60 + date.getMinutes();
 
-const assertTherapistAvailability = (
-	availabilitySlots: Array<{
-		dayOfWeek: number;
-		startMinute: number;
-		endMinute: number;
-		isAvailable: boolean;
-	}>,
-	sessionDateTime: Date,
-): void => {
-	const dayOfWeek = sessionDateTime.getDay();
-	const minuteOfDay = getSlotMinuteOfDay(sessionDateTime);
-
-	const isAvailable = availabilitySlots.some(
-		(slot) =>
-			slot.isAvailable &&
-			slot.dayOfWeek === dayOfWeek &&
-			minuteOfDay >= slot.startMinute &&
-			minuteOfDay < slot.endMinute,
-	);
-
-	if (!isAvailable) {
-		throw new AppError('Therapist is not available at the requested dateTime', 409);
-	}
-};
-
 export const bookPatientSession = async (userId: string, input: BookSessionInput) => {
-	const patientProfile = await PatientProfileModel.findOne({ userId }).select({ _id: 1 }).lean() as any;
+	const patientProfile = await db.patientProfile.findUnique({
+		where: { userId },
+		select: { id: true },
+	});
 	if (!patientProfile) {
 		throw new AppError('Patient profile not found. Please create profile first.', 404);
 	}
 
-    const therapist = await TherapistProfileModel.findById(input.therapistId)
-		.select({
-			_id: 1,
-			displayName: 1,
-			availabilitySlots: 1,
-		})
-        .lean() as any;
+	const therapist = await db.user.findUnique({
+		where: { id: input.therapistId },
+		select: {
+			id: true,
+			role: true,
+			firstName: true,
+			lastName: true,
+			name: true,
+		},
+	});
 
-	if (!therapist) {
+	if (!therapist || String(therapist.role) !== 'THERAPIST') {
 		throw new AppError('Therapist not found', 404);
 	}
 
@@ -111,12 +89,10 @@ export const bookPatientSession = async (userId: string, input: BookSessionInput
 		throw new AppError('dateTime must be in the future', 422);
 	}
 
-	assertTherapistAvailability(therapist.availabilitySlots ?? [], input.dateTime);
-
 	const [therapistConflict, patientConflict] = await prisma.$transaction([
 		prisma.therapySession.findFirst({
 			where: {
-				therapistProfileId: String(therapist._id),
+				therapistProfileId: String(therapist.id),
 				dateTime: input.dateTime,
 				status: { in: PRISMA_ACTIVE_STATUSES },
 			},
@@ -124,7 +100,7 @@ export const bookPatientSession = async (userId: string, input: BookSessionInput
 		}),
 		prisma.therapySession.findFirst({
 			where: {
-				patientProfileId: String(patientProfile._id),
+				patientProfileId: String(patientProfile.id),
 				dateTime: input.dateTime,
 				status: { in: PRISMA_ACTIVE_STATUSES },
 			},
@@ -149,8 +125,8 @@ export const bookPatientSession = async (userId: string, input: BookSessionInput
 	const session = await prisma.therapySession.create({
 		data: {
 			bookingReferenceId,
-			patientProfileId: String(patientProfile._id),
-			therapistProfileId: String(therapist._id),
+			patientProfileId: String(patientProfile.id),
+			therapistProfileId: String(therapist.id),
 			dateTime: input.dateTime,
 			status: 'PENDING',
 		},
@@ -162,8 +138,8 @@ export const bookPatientSession = async (userId: string, input: BookSessionInput
 		entityId: String(session.id),
 		payload: {
 			bookingReferenceId,
-			patientId: String(patientProfile._id),
-			therapistId: String(therapist._id),
+			patientId: String(patientProfile.id),
+			therapistId: String(therapist.id),
 			dateTime: input.dateTime.toISOString(),
 			status: 'pending',
 		},
@@ -175,14 +151,17 @@ export const bookPatientSession = async (userId: string, input: BookSessionInput
 		status: String(session.status).toLowerCase(),
 		dateTime: session.dateTime,
 		therapist: {
-			id: String(therapist._id),
-			displayName: therapist.displayName,
+			id: String(therapist.id),
+			displayName:
+				String(therapist.name ?? '').trim() ||
+				`${String(therapist.firstName ?? '').trim()} ${String(therapist.lastName ?? '').trim()}`.trim() ||
+				'Therapist',
 		},
 	};
 };
 
 export const getMySessionHistory = async (userId: string, query: SessionHistoryQuery) => {
-	const patientProfile = await PatientProfileModel.findOne({ userId }).select({ _id: 1 }).lean() as any;
+	const patientProfile = await db.patientProfile.findUnique({ where: { userId }, select: { id: true } });
 	if (!patientProfile) {
 		throw new AppError('Patient profile not found. Please create profile first.', 404);
 	}
@@ -193,10 +172,10 @@ export const getMySessionHistory = async (userId: string, query: SessionHistoryQ
 	);
 
 	const filter: {
-		patientId: typeof patientProfile._id;
+		patientId: string;
 		status?: 'pending' | 'confirmed' | 'cancelled' | 'completed';
 	} = {
-		patientId: patientProfile._id,
+		patientId: patientProfile.id,
 	};
 
 	if (query.status) {
@@ -205,7 +184,7 @@ export const getMySessionHistory = async (userId: string, query: SessionHistoryQ
 
 	const now = new Date();
 
-	const prismaFilter: any = { patientProfileId: String(patientProfile._id) };
+	const prismaFilter: any = { patientProfileId: String(patientProfile.id) };
 	if (filter.status) prismaFilter.status = String(filter.status).toUpperCase();
 
 	const [totalItems, sessions, pastCount, upcomingCount] = await Promise.all([
@@ -223,15 +202,12 @@ export const getMySessionHistory = async (userId: string, query: SessionHistoryQ
 
 	const therapistIds = [...new Set(sessions.map((session) => String(session.therapistProfileId)))];
 
-	const therapistProfiles = await TherapistProfileModel.find({
-		_id: { $in: therapistIds },
-	})
-		.select({ _id: 1, displayName: 1, specializations: 1 })
-		.lean() as any;
+	const therapistUsers = await db.user.findMany({
+		where: { id: { in: therapistIds } },
+		select: { id: true, name: true, firstName: true, lastName: true },
+	});
 
-	const therapistMap = new Map<string, any>(
-		therapistProfiles.map((therapist: any) => [String(therapist._id), therapist]),
-	);
+	const therapistMap = new Map<string, any>(therapistUsers.map((therapist: any) => [String(therapist.id), therapist]));
 
 	const items = sessions.map((session: any) => {
 		const therapist = therapistMap.get(String(session.therapistProfileId)) as any;
@@ -245,8 +221,11 @@ export const getMySessionHistory = async (userId: string, query: SessionHistoryQ
 			timing: sessionDate < now ? 'past' : 'upcoming',
 			therapist: {
 				id: String(session.therapistProfileId),
-				name: therapist?.displayName ?? 'Unknown Therapist',
-				specializations: therapist?.specializations ?? [],
+				name:
+					String(therapist?.name ?? '').trim() ||
+					`${String(therapist?.firstName ?? '').trim()} ${String(therapist?.lastName ?? '').trim()}`.trim() ||
+					'Unknown Therapist',
+				specializations: [],
 			},
 			bookedAt: session.createdAt,
 		};
@@ -264,7 +243,7 @@ export const getMySessionHistory = async (userId: string, query: SessionHistoryQ
 };
 
 const assertTherapistUser = async (userId: string): Promise<void> => {
-	const user = await UserModel.findById(userId).select('_id role isDeleted').lean();
+	const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, role: true, isDeleted: true } });
 
 	if (!user) {
 		throw new AppError('User not found', 404);
@@ -274,18 +253,14 @@ const assertTherapistUser = async (userId: string): Promise<void> => {
 		throw new AppError('User account is deleted', 410);
 	}
 
-	if (user.role !== 'therapist') {
+	if (String(user.role) !== 'THERAPIST') {
 		throw new AppError('Therapist role required', 403);
 	}
 };
 
 export const getMyTherapistSessions = async (userId: string, query: TherapistSessionHistoryQuery) => {
 	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select({ _id: 1 }).lean() as any;
-	if (!therapistProfile) {
-		throw new AppError('Therapist profile not found. Please create profile first.', 404);
-	}
+	const therapistProfileId = userId;
 
 	const pagination = normalizePagination(
 		{ page: query.page, limit: query.limit },
@@ -293,7 +268,7 @@ export const getMyTherapistSessions = async (userId: string, query: TherapistSes
 	);
 
 	const filter: Record<string, unknown> = {
-		therapistId: therapistProfile._id,
+		therapistId: therapistProfileId,
 	};
 
 	// status filter
@@ -330,9 +305,16 @@ export const getMyTherapistSessions = async (userId: string, query: TherapistSes
 
 	// patient search: if provided, resolve matching patientIds via User -> PatientProfile
 	if (query.patient) {
-		const regex = new RegExp(String(query.patient), 'i');
-		const matchedUsers = (await (UserModel.find({ $or: [{ name: regex }, { email: regex }] }).select({ _id: 1 }) as any).lean()) as any;
-		const userIds = (matchedUsers as any).map((u: any) => u._id);
+		const matchedUsers = await db.user.findMany({
+			where: {
+				OR: [
+					{ name: { contains: query.patient, mode: 'insensitive' } },
+					{ email: { contains: query.patient, mode: 'insensitive' } },
+				],
+			},
+			select: { id: true },
+		});
+		const userIds = matchedUsers.map((u: any) => u.id);
 		if (userIds.length === 0) {
 			return {
 				items: [],
@@ -341,8 +323,8 @@ export const getMyTherapistSessions = async (userId: string, query: TherapistSes
 			};
 		}
 
-		const matchedPatients = (await (PatientProfileModel.find({ userId: { $in: userIds } }).select({ _id: 1 }) as any).lean()) as any;
-		const patientIds = (matchedPatients as any).map((p: any) => p._id);
+		const matchedPatients = await db.patientProfile.findMany({ where: { userId: { in: userIds } }, select: { id: true } });
+		const patientIds = matchedPatients.map((p: any) => p.id);
 		if (patientIds.length === 0) {
 			return {
 				items: [],
@@ -351,7 +333,7 @@ export const getMyTherapistSessions = async (userId: string, query: TherapistSes
 			};
 		}
 
-		filter.patientId = { $in: patientIds };
+		filter.patientId = { $in: patientIds.map(String) };
 	}
 
 	// optional sessionType filter (if stored)
@@ -359,8 +341,10 @@ export const getMyTherapistSessions = async (userId: string, query: TherapistSes
 		filter.sessionType = query.type;
 	}
 
-	const prismaFilter2: any = { therapistProfileId: String(therapistProfile._id) };
+	const prismaFilter2: any = { therapistProfileId: String(therapistProfileId) };
 	if (filter.status) prismaFilter2.status = String(filter.status).toUpperCase();
+	if (filter.patientId) prismaFilter2.patientProfileId = filter.patientId;
+	if (filter.dateTime) prismaFilter2.dateTime = filter.dateTime;
 
 	const [totalItems, sessions, pastCount, upcomingCount] = await Promise.all([
 		prisma.therapySession.count({ where: prismaFilter2 }),
@@ -376,13 +360,16 @@ export const getMyTherapistSessions = async (userId: string, query: TherapistSes
 	]);
 
 	const patientIds = [...new Set(sessions.map((session) => String(session.patientProfileId)))];
-	const patientProfiles = (await (PatientProfileModel.find({ _id: { $in: patientIds } }).select({ _id: 1, userId: 1, age: 1, gender: 1 }) as any).lean()) as any;
+	const patientProfiles = await db.patientProfile.findMany({
+		where: { id: { in: patientIds } },
+		select: { id: true, userId: true, age: true, gender: true },
+	});
 
-	const userIds = (patientProfiles as any).map((p: any) => String(p.userId));
-	const users = (await (UserModel.find({ _id: { $in: userIds } }).select({ _id: 1, name: 1, email: 1 }) as any).lean()) as any;
+	const userIds = patientProfiles.map((p: any) => String(p.userId));
+	const users = await db.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true, firstName: true, lastName: true } });
 
-	const patientMap: Map<string, any> = new Map((patientProfiles as any).map((patient: any) => [String(patient._id), patient]));
-	const userMap: Map<string, any> = new Map((users as any).map((u: any) => [String(u._id), u]));
+	const patientMap: Map<string, any> = new Map(patientProfiles.map((patient: any) => [String(patient.id), patient]));
+	const userMap: Map<string, any> = new Map(users.map((u: any) => [String(u.id), u]));
 
 	const items = sessions.map((session: any) => {
 		const patient = patientMap.get(String(session.patientProfileId)) as any;
@@ -390,7 +377,10 @@ export const getMyTherapistSessions = async (userId: string, query: TherapistSes
 		const sessionDate = new Date(session.dateTime);
 
 		// Minimal patient footprint for dashboard list (no PII)
-		const initials = user?.name ? user.name.split(' ').map((p: string) => p.charAt(0)).join('.') : null;
+		const displayName =
+			String(user?.name ?? '').trim() ||
+			`${String(user?.firstName ?? '').trim()} ${String(user?.lastName ?? '').trim()}`.trim();
+		const initials = displayName ? displayName.split(' ').map((p: string) => p.charAt(0)).join('.') : null;
 
 		return {
 			sessionId: String(session.id),
@@ -412,7 +402,7 @@ export const getMyTherapistSessions = async (userId: string, query: TherapistSes
 		const REDIS_URL = process.env.REDIS_URL || env.redisUrl || 'redis://127.0.0.1:6379';
 		const r = createClient({ url: REDIS_URL });
 		await r.connect();
-		const sessionKeys = sessions.map((s) => `session:presence:${String(s._id)}`);
+		const sessionKeys = sessions.map((s) => `session:presence:${String(s.id)}`);
 		const patientKeys = patientIds.map((p) => `user:presence:${String(p)}`);
 		const pipelineKeys = [...sessionKeys, ...patientKeys];
 		const results = await r.mGet(pipelineKeys);
@@ -423,7 +413,7 @@ export const getMyTherapistSessions = async (userId: string, query: TherapistSes
 
 		for (let i = 0; i < sessionKeys.length; i++) {
 			const v = results[i];
-			sessionPresenceMap.set(String(sessions[i]._id), !!v);
+			sessionPresenceMap.set(String(sessions[i].id), !!v);
 		}
 		for (let i = 0; i < patientKeys.length; i++) {
 			const v = results[sessionKeys.length + i];
@@ -451,76 +441,57 @@ export const getMyTherapistSessions = async (userId: string, query: TherapistSes
 
 export const getMyTherapistSessionDetail = async (userId: string, sessionId: string) => {
 	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean() as any;
-	if (!therapistProfile) throw new AppError('Therapist profile not found', 404);
+	const therapistProfileId = userId;
 
 	const session = await prisma.therapySession.findFirst({
-		where: { id: sessionId, therapistProfileId: therapistProfile._id },
+		where: { id: sessionId, therapistProfileId: therapistProfileId },
 		select: { id: true, bookingReferenceId: true, patientProfileId: true, dateTime: true, status: true, createdAt: true, cancelledAt: true },
 	});
 
 	if (!session) throw new AppError('Session not found', 404);
 
 	// patient profile and user
-	const patientProfile = await PatientProfileModel.findById(session.patientProfileId).select({ _id: 1, userId: 1, age: 1, gender: 1 }).lean() as any;
-	const user = patientProfile ? await UserModel.findById(patientProfile.userId).select({ name: 1, email: 1 }).lean() : null;
+	const patientProfile = await db.patientProfile.findUnique({
+		where: { id: String(session.patientProfileId) },
+		select: { id: true, userId: true, age: true, gender: true },
+	});
+	const user = patientProfile
+		? await db.user.findUnique({
+				where: { id: String(patientProfile.userId) },
+				select: { name: true, email: true, firstName: true, lastName: true },
+		  })
+		: null;
+	const patientName =
+		String(user?.name ?? '').trim() ||
+		`${String(user?.firstName ?? '').trim()} ${String(user?.lastName ?? '').trim()}`.trim() ||
+		null;
 
-	// responses / timeline - try Prisma patientSessionResponse (CBT) first, fall back to any mongoose model
-	let responses: any[] = [];
-	try {
-		const { prisma } = require('../config/db');
-		if (prisma && typeof prisma.patientSessionResponse?.findMany === 'function') {
-			const rows = await prisma.patientSessionResponse.findMany({ where: { sessionId: String(session.id) }, orderBy: { answeredAt: 'asc' } });
-			responses = rows.map((r: any) => ({ _id: r.id, questionId: r.questionId, questionText: r.question?.prompt ?? null, answer: r.responseData, createdAt: r.answeredAt, branchKey: r.branchKey ?? null, nextQuestionId: r.nextQuestionId ?? null, flagged: r.flagged ?? false, flagReason: r.flagReason ?? null }));
-		}
-	} catch (e) {
-		// ignore and try mongoose below
-	}
+	const responses = await prisma.patientSessionResponse.findMany({
+		where: { sessionId: String(session.id) },
+		orderBy: { answeredAt: 'asc' },
+		select: {
+			id: true,
+			questionId: true,
+			responseData: true,
+			answeredAt: true,
+		},
+	});
 
-	if (!responses.length) {
-		try {
-			const ResponseModel = require('../models/session-response.model').default;
-			responses = await ResponseModel.find({ sessionId: session.id })
-				.select({ _id: 1, questionId: 1, questionText: 1, answer: 1, createdAt: 1, branchKey: 1, nextQuestionId: 1, flagged: 1, flagReason: 1 })
-				.sort({ createdAt: 1 })
-				.lean();
-		} catch (e) {
-			// no response model available; responses remain empty
-			responses = [];
-		}
-	}
+	const branching = { nodes: {}, path: [] as string[] };
 
-	// build branching nodes minimal map if question templates available
-	let branching = { nodes: {}, path: [] as string[] };
-	try {
-		const templateModel = require('../models/session-template.model').default;
-		// if template is linked in session, try to fetch question graph (best-effort)
-		const template = await templateModel.findOne({ sessions: session.id }).select({ _id: 1, questions: 1 }).lean();
-		if (template && Array.isArray(template.questions)) {
-			const nodes: Record<string, any> = {};
-			template.questions.forEach((q: any) => {
-				nodes[q._id] = { choices: q.choices ?? [] };
-			});
-			branching.nodes = nodes;
-		}
-	} catch (e) {
-		// ignore if templates not present
-	}
-
-	const path = responses.map((r: any) => String(r.questionId));
+	const path = responses.map((r) => String(r.questionId));
 	branching.path = path;
 
-	const items = responses.map((r: any) => ({
-		responseId: String(r._id),
+	const items = responses.map((r) => ({
+		responseId: String(r.id),
 		questionId: String(r.questionId),
-		questionText: r.questionText ?? null,
-		answer: r.answer,
-		timestamp: r.createdAt,
-		branchKey: r.branchKey ?? null,
-		nextQuestionId: r.nextQuestionId ?? null,
-		flagged: !!r.flagged,
-		flagReason: r.flagReason ?? null,
+		questionText: null,
+		answer: r.responseData,
+		timestamp: r.answeredAt,
+		branchKey: null,
+		nextQuestionId: null,
+		flagged: false,
+		flagReason: null,
 	}));
 
 	return {
@@ -532,8 +503,8 @@ export const getMyTherapistSessionDetail = async (userId: string, sessionId: str
 			completedAt: session.cancelledAt ?? null,
 		},
 		patient: {
-			id: patientProfile?._id ? String(patientProfile._id) : null,
-			name: user?.name ?? null,
+			id: patientProfile?.id ? String(patientProfile.id) : null,
+			name: patientName,
 			email: user?.email ?? null,
 			age: patientProfile?.age ?? null,
 			gender: patientProfile?.gender ?? null,
@@ -550,14 +521,10 @@ export const updateMyTherapistSessionStatus = async (
 	payload: TherapistSessionStatusPayload,
 ) => {
 	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean() as any;
-	if (!therapistProfile) {
-		throw new AppError('Therapist profile not found. Please create profile first.', 404);
-	}
+	const therapistProfileId = userId;
 
 	const session = await prisma.therapySession.findFirst({
-		where: { id: sessionId, therapistProfileId: String(therapistProfile._id) },
+		where: { id: sessionId, therapistProfileId: String(therapistProfileId) },
 		select: { id: true, bookingReferenceId: true, patientProfileId: true, dateTime: true, status: true, cancelledAt: true, updatedAt: true },
 	});
 
@@ -594,7 +561,7 @@ export const updateMyTherapistSessionStatus = async (
 	}
 
 	await prisma.therapySession.updateMany({
-		where: { id: sessionId, therapistProfileId: String(therapistProfile._id) },
+		where: { id: sessionId, therapistProfileId: String(therapistProfileId) },
 		data: {
 			status: String(payload.status).toUpperCase(),
 			cancelledAt: payload.status === 'cancelled' ? new Date() : null,
@@ -602,7 +569,7 @@ export const updateMyTherapistSessionStatus = async (
 	});
 
 	const updated = await prisma.therapySession.findFirst({
-		where: { id: sessionId, therapistProfileId: String(therapistProfile._id) },
+		where: { id: sessionId, therapistProfileId: String(therapistProfileId) },
 		select: { id: true, bookingReferenceId: true, patientProfileId: true, dateTime: true, status: true, cancelledAt: true, updatedAt: true },
 	});
 
@@ -633,28 +600,24 @@ export const saveMyTherapistSessionNote = async (
 	payload: TherapistSessionNotePayload,
 ) => {
 	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean() as any;
-	if (!therapistProfile) {
-		throw new AppError('Therapist profile not found. Please create profile first.', 404);
-	}
+	const therapistProfileId = userId;
 
 	const encrypted = encryptSessionNote(payload.content);
 	const noteUpdatedAt = new Date();
 
 	await prisma.therapySession.updateMany({
-		where: { id: sessionId, therapistProfileId: String(therapistProfile._id) },
+		where: { id: sessionId, therapistProfileId: String(therapistProfileId) },
 		data: {
 			noteEncryptedContent: encrypted.encryptedContent,
 			noteIv: encrypted.iv,
 			noteAuthTag: encrypted.authTag,
 			noteUpdatedAt: noteUpdatedAt,
-			noteUpdatedByTherapistId: String(therapistProfile._id),
+			noteUpdatedByTherapistId: String(therapistProfileId),
 		},
 	});
 
 	const updated = await prisma.therapySession.findFirst({
-		where: { id: sessionId, therapistProfileId: String(therapistProfile._id) },
+		where: { id: sessionId, therapistProfileId: String(therapistProfileId) },
 		select: { id: true, bookingReferenceId: true, dateTime: true, noteEncryptedContent: true, noteIv: true, noteAuthTag: true, noteUpdatedAt: true, updatedAt: true },
 	});
 
@@ -681,99 +644,37 @@ export const addResponseNote = async (
 	responseId: string,
 	content: string,
 ) => {
-	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean() as any;
-	if (!therapistProfile) throw new AppError('Therapist profile not found', 404);
-
-	// ensure therapist owns the therapy session
-	const session = await prisma.therapySession.findFirst({ where: { id: sessionId, therapistProfileId: String(therapistProfile._id) }, select: { id: true } });
-	if (!session) throw new AppError('Session not found', 404);
-
-	const encrypted = encryptSessionNote(content);
-
-	const created = await SessionResponseNoteModel.create({
-		sessionId,
-		responseId,
-		therapistId: therapistProfile._id,
-		encryptedContent: encrypted.encryptedContent,
-		iv: encrypted.iv,
-		authTag: encrypted.authTag,
-	});
-
-	return {
-		id: String(created._id),
-		sessionId: created.sessionId,
-		responseId: created.responseId,
-		createdAt: created.createdAt,
-		updatedAt: created.updatedAt,
-	};
+	void userId;
+	void sessionId;
+	void responseId;
+	void content;
+	throw new AppError('Response notes are unavailable until Prisma response-note models are introduced', 501);
 };
 
 export const listResponseNotes = async (userId: string, sessionId: string, responseId: string) => {
-	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean() as any;
-	if (!therapistProfile) throw new AppError('Therapist profile not found', 404);
-
-	const notes = await SessionResponseNoteModel.find({ sessionId, responseId, therapistId: therapistProfile._id })
-		.select({ _id: 1, sessionId: 1, responseId: 1, createdAt: 1, updatedAt: 1 })
-		.sort({ createdAt: -1 })
-		.lean();
-
-	return notes.map((n) => ({ id: String(n._id), sessionId: n.sessionId, responseId: n.responseId, createdAt: n.createdAt, updatedAt: n.updatedAt }));
+	void userId;
+	void sessionId;
+	void responseId;
+	throw new AppError('Response notes are unavailable until Prisma response-note models are introduced', 501);
 };
 
 export const getResponseNoteDecrypted = async (userId: string, noteId: string) => {
-	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean() as any;
-	if (!therapistProfile) throw new AppError('Therapist profile not found', 404);
-
-	const note = await SessionResponseNoteModel.findById(noteId).lean();
-	if (!note) throw new AppError('Note not found', 404);
-
-	if (String(note.therapistId) !== String(therapistProfile._id)) {
-		throw new AppError('Forbidden', 403);
-	}
-
-	return decryptSessionNote({ encryptedContent: note.encryptedContent, iv: note.iv, authTag: note.authTag });
+	void userId;
+	void noteId;
+	throw new AppError('Response notes are unavailable until Prisma response-note models are introduced', 501);
 };
 
 export const updateResponseNote = async (userId: string, noteId: string, content: string) => {
-	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean() as any;
-	if (!therapistProfile) throw new AppError('Therapist profile not found', 404);
-
-	const note = await SessionResponseNoteModel.findById(noteId);
-	if (!note) throw new AppError('Note not found', 404);
-
-	if (String(note.therapistId) !== String(therapistProfile._id)) {
-		throw new AppError('Forbidden', 403);
-	}
-
-	const encrypted = encryptSessionNote(content);
-	note.encryptedContent = encrypted.encryptedContent;
-	note.iv = encrypted.iv;
-	note.authTag = encrypted.authTag;
-	await note.save();
-
-	return { id: String(note._id), updatedAt: note.updatedAt };
+	void userId;
+	void noteId;
+	void content;
+	throw new AppError('Response notes are unavailable until Prisma response-note models are introduced', 501);
 };
 
 export const deleteResponseNote = async (userId: string, noteId: string) => {
-	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean() as any;
-	if (!therapistProfile) throw new AppError('Therapist profile not found', 404);
-
-	const note = await SessionResponseNoteModel.findById(noteId).lean();
-	if (!note) throw new AppError('Note not found', 404);
-	if (String(note.therapistId) !== String(therapistProfile._id)) throw new AppError('Forbidden', 403);
-
-	await SessionResponseNoteModel.deleteOne({ _id: noteId });
-	return { success: true };
+	void userId;
+	void noteId;
+	throw new AppError('Response notes are unavailable until Prisma response-note models are introduced', 501);
 };
 
 export const getMyTherapistSessionNoteDecrypted = async (
@@ -781,13 +682,9 @@ export const getMyTherapistSessionNoteDecrypted = async (
 	sessionId: string,
 ): Promise<string> => {
 	await assertTherapistUser(userId);
+	const therapistProfileId = userId;
 
-	const therapistProfile = await TherapistProfileModel.findOne({ userId }).select('_id').lean() as any;
-	if (!therapistProfile) {
-		throw new AppError('Therapist profile not found. Please create profile first.', 404);
-	}
-
-	const session = await prisma.therapySession.findFirst({ where: { id: sessionId, therapistProfileId: String(therapistProfile._id) }, select: { noteEncryptedContent: true, noteIv: true, noteAuthTag: true } });
+	const session = await prisma.therapySession.findFirst({ where: { id: sessionId, therapistProfileId: String(therapistProfileId) }, select: { noteEncryptedContent: true, noteIv: true, noteAuthTag: true } });
 
 	if (!session) {
 		throw new AppError('Session not found', 404);
@@ -805,100 +702,7 @@ export const getMyTherapistSessionNoteDecrypted = async (
 };
 
 export const getMyTherapistEarnings = async (userId: string, query: TherapistEarningsQuery) => {
-	await assertTherapistUser(userId);
-
-	const therapistProfile = await TherapistProfileModel.findOne({ userId })
-		.select({ _id: 1, consultationFee: 1, currency: 1 })
-		.lean();
-
-	if (!therapistProfile) {
-		throw new AppError('Therapist profile not found. Please create profile first.', 404);
-	}
-
-	const pagination = normalizePagination(
-		{ page: query.page, limit: query.limit },
-		{ defaultPage: 1, defaultLimit: 10, maxLimit: 50 },
-	);
-
-	const earningsPerSession = therapistProfile.consultationFee ?? 0;
-
-	const dateMatch: { $gte?: Date; $lte?: Date } = {};
-	if (query.fromDate) {
-		dateMatch.$gte = query.fromDate;
-	}
-	if (query.toDate) {
-		dateMatch.$lte = query.toDate;
-	}
-
-	const baseMatch: {
-		therapistId: Types.ObjectId;
-		status: 'completed';
-		dateTime?: { $gte?: Date; $lte?: Date };
-	} = {
-		therapistId: therapistProfile._id,
-		status: 'completed',
-	};
-
-	if (query.fromDate || query.toDate) {
-		baseMatch.dateTime = dateMatch;
-	}
-
-	const currentMonthStart = new Date();
-	currentMonthStart.setDate(1);
-	currentMonthStart.setHours(0, 0, 0, 0);
-
-	const nextMonthStart = new Date(currentMonthStart);
-	nextMonthStart.setMonth(nextMonthStart.getMonth() + 1);
-
-	const baseWhere: any = { therapistProfileId: String(therapistProfile._id), status: 'COMPLETED' };
-	if (query.fromDate) baseWhere.dateTime = { ...(baseWhere.dateTime ?? {}), gte: query.fromDate };
-	if (query.toDate) baseWhere.dateTime = { ...(baseWhere.dateTime ?? {}), lte: query.toDate };
-
-	const [totalCompletedSessions, historyRows, monthlyCountResult] = await Promise.all([
-		prisma.therapySession.count({ where: baseWhere }),
-		prisma.therapySession.findMany({
-			where: baseWhere,
-			orderBy: { dateTime: 'desc' },
-			skip: pagination.skip,
-			take: pagination.limit,
-			select: { id: true, bookingReferenceId: true, patientProfileId: true, dateTime: true, status: true, updatedAt: true },
-		}),
-		prisma.therapySession.count({ where: { therapistProfileId: String(therapistProfile._id), status: 'COMPLETED', dateTime: { gte: currentMonthStart, lt: nextMonthStart } } }),
-	]);
-
-	const aggregated = { totalCompletedSessions, totalEarnings: totalCompletedSessions * earningsPerSession, history: historyRows };
-
-	const historyPatientIds = [...new Set((aggregated.history ?? []).map((item: any) => String(item.patientProfileId)))];
-	const patientProfiles = (await (PatientProfileModel.find({ _id: { $in: historyPatientIds } }).select({ _id: 1, age: 1, gender: 1 }) as any).lean()) as any;
-	const patientMap: Map<string, any> = new Map((patientProfiles as any).map((patient: any) => [String(patient._id), patient]));
-
-	const historyItems = (aggregated.history ?? []).map((item: any) => {
-		const patient = patientMap.get(String(item.patientProfileId));
-		return {
-			sessionId: String(item.id),
-			bookingReferenceId: item.bookingReferenceId,
-			dateTime: item.dateTime,
-			earningAmount: earningsPerSession,
-			status: String(item.status).toLowerCase(),
-			patient: { id: String(item.patientProfileId), age: patient?.age ?? null, gender: patient?.gender ?? null },
-			completedAt: item.updatedAt,
-		};
-	});
-
-	return {
-		summary: {
-			totalEarnings: aggregated.totalEarnings,
-			monthlyEarnings: monthlyCountResult * earningsPerSession,
-			completedSessionCount: aggregated.totalCompletedSessions,
-			currency: 'INR',
-		},
-		filters: {
-			fromDate: query.fromDate ?? null,
-			toDate: query.toDate ?? null,
-		},
-		history: {
-			items: historyItems,
-			meta: buildPaginationMeta(aggregated.totalCompletedSessions, pagination),
-		},
-	};
+	void userId;
+	void query;
+	throw new AppError('Therapist earnings endpoint is unavailable until therapist pricing metadata is fully migrated to Prisma', 501);
 };

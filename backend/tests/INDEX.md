@@ -64,7 +64,7 @@ tests/helpers/
 ✅ **31 Tests** across 5 endpoints  
 ✅ **100% Coverage** of Admin API  
 ✅ **2-3 Second** execution time  
-✅ **MongoMemoryServer** (in-memory DB)  
+✅ **PostgreSQLFixture** (in-memory DB)  
 ✅ **Supertest** (real HTTP testing)  
 ✅ **Factory Pattern** (DRY data)  
 ✅ **Complete Documentation**  
@@ -153,7 +153,7 @@ npm test -- tests/admin/admin.integration.test.ts --coverage
 
 ```typescript
 // Lifecycle
-await connectToTestDB()     // Start MongoMemoryServer
+await connectToTestDB()     // Start PostgreSQLFixture
 await disconnectFromTestDB() // Stop & cleanup
 await clearTestDB()         // Clear between tests
 
@@ -241,7 +241,7 @@ Update [COVERAGE_CHECKLIST.md](COVERAGE_CHECKLIST.md) with new test details
 **A**: Read [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) first (5 min)
 
 ### Q: Can I run tests offline?
-**A**: Yes! MongoMemoryServer is in-memory, no external dependencies
+**A**: Yes! PostgreSQLFixture is in-memory, no external dependencies
 
 ### Q: How fast are the tests?
 **A**: 2-3 seconds for full suite (31 tests)
@@ -306,7 +306,7 @@ GET /admin/subscriptions     8
 
 ## ✨ What Makes This Great
 
-✅ **No External Dependencies**: MongoMemoryServer is self-contained  
+✅ **No External Dependencies**: PostgreSQLFixture is self-contained  
 ✅ **Fast Execution**: 2-3 seconds for complete suite  
 ✅ **Reliable**: In-memory DB, no flakiness  
 ✅ **Comprehensive**: 100% endpoint coverage  
