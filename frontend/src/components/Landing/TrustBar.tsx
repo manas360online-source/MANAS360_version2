@@ -1,30 +1,55 @@
 import React from 'react';
+import { ShieldCheck, UserCheck, HeartHandshake, Timer } from 'lucide-react';
 
 const trustItems = [
-  { icon: '🔒', title: '100%', description: 'Confidential' },
-  { icon: '🧘', title: 'Licensed', description: 'Therapists' },
-  { icon: '💙', title: 'No', description: 'Judgment' },
-  { icon: '⚡', title: '60 Second', description: 'Check' },
+  {
+    icon: ShieldCheck,
+    label: '100% Confidential',
+    color: 'text-calm-sage',
+    bg: 'bg-calm-sage/10',
+  },
+  {
+    icon: UserCheck,
+    label: 'Licensed Therapists',
+    color: 'text-gentle-blue',
+    bg: 'bg-gentle-blue/10',
+  },
+  {
+    icon: HeartHandshake,
+    label: 'Zero Judgment',
+    color: 'text-soft-lavender',
+    bg: 'bg-soft-lavender/10',
+  },
+  {
+    icon: Timer,
+    label: '60-Second Check',
+    color: 'text-accent-coral',
+    bg: 'bg-accent-coral/10',
+  },
 ];
 
 export const TrustBar: React.FC = () => {
   return (
-    <section className="py-6 md:py-8" aria-label="Trust indicators">
-      <div className="rounded-[30px] border border-white/60 bg-white/70 p-5 shadow-soft-sm backdrop-blur-sm md:p-6">
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">
-          {trustItems.map((item) => (
-            <article
-              key={`${item.title}-${item.description}`}
-              className="rounded-3xl border border-white/60 bg-cream/75 p-4 text-center shadow-soft-xs"
+    <section className="py-4 md:py-6" aria-label="Trust indicators">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+        {trustItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <div
+              key={item.label}
+              className="flex items-center gap-3 rounded-2xl border border-calm-sage/10 bg-white/80 px-4 py-4 shadow-soft-xs backdrop-blur-sm transition-shadow duration-300 hover:shadow-soft-sm"
             >
-              <div className="mx-auto mb-2 flex h-11 w-11 items-center justify-center rounded-full border border-calm-sage/20 bg-white/80 text-lg">
-                {item.icon}
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${item.bg}`}
+              >
+                <Icon className={`h-5 w-5 ${item.color}`} strokeWidth={1.8} />
               </div>
-              <h3 className="text-sm font-semibold text-charcoal">{item.title}</h3>
-              <p className="text-xs text-charcoal/75">{item.description}</p>
-            </article>
-          ))}
-        </div>
+              <span className="text-sm font-semibold leading-tight text-charcoal">
+                {item.label}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

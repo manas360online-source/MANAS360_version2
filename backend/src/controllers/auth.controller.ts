@@ -24,6 +24,7 @@ import {
 	validateOtp,
 	validatePassword,
 	validatePhone,
+	validatePublicSignupRole,
 } from '../validators/auth.validator';
 import { AppError } from '../middleware/error.middleware';
 
@@ -33,11 +34,27 @@ const getRequestMeta = (req: Request) => ({
 	device: req.get('x-device-id') ?? undefined,
 });
 
+const resolveCookieDomain = (): string | undefined => {
+	const rawDomain = env.cookieDomain?.trim();
+	if (!rawDomain) {
+		return undefined;
+	}
+
+	const normalized = rawDomain.toLowerCase();
+	if (normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '::1') {
+		return undefined;
+	}
+
+	return rawDomain;
+};
+
+const cookieDomain = resolveCookieDomain();
+
 const tokenCookieOptions = {
 	httpOnly: true,
 	secure: env.cookieSecure,
 	sameSite: 'strict' as const,
-	domain: env.cookieDomain,
+	domain: cookieDomain,
 	path: '/',
 };
 
@@ -56,18 +73,24 @@ const setAuthCookies = (res: Response, accessToken: string, refreshToken: string
 		httpOnly: false,
 		secure: env.cookieSecure,
 		sameSite: 'strict',
-		domain: env.cookieDomain,
+		domain: cookieDomain,
 		path: '/',
 		maxAge: 7 * 24 * 60 * 60 * 1000,
 	});
 };
 
 export const registerController = async (req: Request, res: Response): Promise<void> => {
+	const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+	if (!name) {
+		throw new AppError('name is required', 400);
+	}
+
 	const result = await registerWithEmail(
 		{
 			email: validateEmail(req.body.email),
 			password: validatePassword(req.body.password),
-			name: typeof req.body.name === 'string' ? req.body.name.trim() || undefined : undefined,
+			name,
+			role: validatePublicSignupRole(req.body.role),
 		},
 		getRequestMeta(req),
 	);
@@ -117,10 +140,17 @@ export const meController = async (req: Request, res: Response): Promise<void> =
 };
 
 export const signupWithEmailController = async (req: Request, res: Response): Promise<void> => {
+	const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+	if (!name) {
+		throw new AppError('name is required', 400);
+	}
+
 	const result = await registerWithEmail(
 		{
 			email: validateEmail(req.body.email),
 			password: validatePassword(req.body.password),
+			name,
+			role: validatePublicSignupRole(req.body.role),
 		},
 		getRequestMeta(req),
 	);
@@ -254,7 +284,7 @@ export const logoutController = async (req: Request, res: Response): Promise<voi
 		httpOnly: false,
 		secure: env.cookieSecure,
 		sameSite: 'strict',
-		domain: env.cookieDomain,
+		domain: cookieDomain,
 		path: '/',
 	});
 

@@ -1,4 +1,11 @@
 import React, { useState } from 'react';
+import { PhoneCall, Bot, HeartPulse, ChevronRight, ChevronLeft } from 'lucide-react';
+
+const quickItems = [
+  { icon: PhoneCall, label: 'IVR', ariaLabel: 'IVR quick access' },
+  { icon: Bot, label: 'Dr. Meera', ariaLabel: 'Dr. Meera AI quick access' },
+  { icon: HeartPulse, label: 'Buddy', ariaLabel: 'Support buddy quick access' },
+];
 
 export const QuickAccessRail: React.FC = () => {
   const [isOpen, setIsOpen] = useState(true);
@@ -12,49 +19,42 @@ export const QuickAccessRail: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsOpen((prev) => !prev)}
-          className="absolute -right-4 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md border border-calm-sage/35 bg-charcoal text-cream shadow-soft-sm transition duration-300 hover:bg-charcoal/85"
+          className="absolute -right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border border-calm-sage/20 bg-charcoal text-cream shadow-soft-xs transition duration-300 hover:bg-charcoal/85"
           aria-label={isOpen ? 'Hide quick access' : 'Show quick access'}
           aria-expanded={isOpen}
         >
-          <span className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>›</span>
+          {isOpen ? (
+            <ChevronLeft className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
         </button>
 
         {isOpen ? (
-          <div className="flex flex-col gap-2 rounded-xl border border-calm-sage/35 bg-charcoal/95 p-2 shadow-soft-md">
-            <button
-              type="button"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-xs font-semibold text-cream transition duration-300 hover:bg-charcoal/80"
-              aria-label="IVR quick access"
-            >
-              <span aria-hidden="true">📞</span>
-              <span>IVR</span>
-            </button>
-            <button
-              type="button"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-xs font-semibold text-cream transition duration-300 hover:bg-charcoal/80"
-              aria-label="Dr. Meera quick access"
-            >
-              <span aria-hidden="true">👩‍⚕️</span>
-              <span>Dr. Meera</span>
-            </button>
-            <button
-              type="button"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-3 text-xs font-semibold text-cream transition duration-300 hover:bg-charcoal/80"
-              aria-label="Budd quick access"
-            >
-              <span aria-hidden="true">🫂</span>
-              <span>Budd</span>
-            </button>
+          <div className="flex flex-col gap-1.5 rounded-xl border border-calm-sage/20 bg-charcoal/95 p-1.5 shadow-soft-md backdrop-blur-sm">
+            {quickItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  className="inline-flex min-h-[40px] items-center gap-2 rounded-lg px-2.5 text-xs font-medium text-cream transition duration-200 hover:bg-cream/10"
+                  aria-label={item.ariaLabel}
+                >
+                  <Icon className="h-4 w-4 text-calm-sage" strokeWidth={1.8} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
         ) : (
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-calm-sage/35 bg-charcoal/95 px-3 text-xs font-semibold text-cream shadow-soft-sm"
+            className="inline-flex min-h-[40px] items-center gap-2 rounded-xl border border-calm-sage/20 bg-charcoal/95 px-2.5 text-xs font-medium text-cream shadow-soft-xs backdrop-blur-sm"
             aria-label="Show quick access"
           >
-            <span aria-hidden="true">🫂</span>
-            <span>Quick</span>
+            <HeartPulse className="h-4 w-4 text-calm-sage" strokeWidth={1.8} />
           </button>
         )}
       </div>

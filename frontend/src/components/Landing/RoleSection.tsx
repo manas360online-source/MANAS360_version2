@@ -1,58 +1,101 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { Heart, Users, Briefcase, GraduationCap, ArrowRight } from 'lucide-react';
 
-const roleItems = [
+const roles = [
   {
-    icon: '🫶',
-    title: 'Tell Us How You Feel',
+    icon: Heart,
+    title: 'For Individuals',
     description:
-      'Answer 3 simple questions about what you\'re experiencing. It takes just 60 seconds. No medical jargon.',
+      'Get personalized support for anxiety, depression, stress, and more. AI-powered assessment with licensed therapist matching.',
+    cta: 'Start Your Check',
+    route: '/assessment',
+    accent: 'text-accent-coral',
+    bg: 'bg-accent-coral/8',
   },
   {
-    icon: '🧭',
-    title: 'Get Clarity',
+    icon: Users,
+    title: 'For Couples & Families',
     description:
-      'We\'ll help you understand what you\'re going through. Depression? Anxiety? Something else? We\'ll figure it out together.',
+      'Strengthen your relationships with guided couples therapy and family counseling sessions — together or individually.',
+    cta: 'Explore Plans',
+    route: '/couples',
+    accent: 'text-soft-lavender',
+    bg: 'bg-soft-lavender/8',
   },
   {
-    icon: '🌿',
-    title: 'Connect with Help',
+    icon: Briefcase,
+    title: 'For Organizations',
     description:
-      'We\'ll match you with a therapist who specializes in exactly what you need. Book your first session at ₹500.',
+      'Employee wellness programs, campus mental health partnerships, and institutional mental health solutions at scale.',
+    cta: 'Learn More',
+    route: '/corporate',
+    accent: 'text-calm-sage',
+    bg: 'bg-calm-sage/8',
   },
   {
-    icon: '⚡',
-    title: '60 Second Check',
-    description: 'Immediate guidance',
+    icon: GraduationCap,
+    title: 'For Therapists',
+    description:
+      'Join our network of 500+ licensed professionals. Access referral streams, AI-assisted tools, and certification programs.',
+    cta: 'Join the Network',
+    route: '/join',
+    accent: 'text-gentle-blue',
+    bg: 'bg-gentle-blue/8',
   },
 ];
 
 export const RoleSection: React.FC = () => {
   return (
-    <section className="py-12 md:py-16" aria-labelledby="role-title">
-      <h2 id="role-title" className="text-center font-serif text-3xl font-light text-charcoal md:text-5xl">
-        Connect with Help
-      </h2>
+    <section className="py-16 md:py-20" aria-labelledby="role-title">
+      <div className="mx-auto max-w-2xl text-center">
+        <span className="mb-3 inline-block text-sm font-semibold uppercase tracking-widest text-calm-sage">
+          Who It&rsquo;s For
+        </span>
+        <h2
+          id="role-title"
+          className="font-serif text-3xl font-light text-charcoal md:text-4xl lg:text-5xl"
+        >
+          Mental health support for everyone
+        </h2>
+        <p className="mt-3 text-base text-charcoal/60">
+          Whether you&rsquo;re seeking help for yourself, your family, or your
+          organization — we have a path for you.
+        </p>
+      </div>
 
-      <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 md:mt-10">
-        {roleItems.map((item) => (
-          <article
-            key={`${item.title}-${item.description}`}
-            className="rounded-[30px] border border-white/65 bg-cream/95 p-6 text-center shadow-soft-sm transition duration-300 hover:-translate-y-1"
-          >
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-calm-sage/20 bg-white/85 text-xl">
-              {item.icon}
-            </div>
-            <h3 className="text-xl font-semibold text-charcoal">{item.title}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-charcoal/75">{item.description}</p>
-            <a
-              href="#"
-              className="mt-4 inline-flex min-h-[44px] items-center rounded-full border border-calm-sage/35 px-4 text-sm font-medium text-charcoal transition duration-300 hover:-translate-y-0.5"
-              onClick={(event) => event.preventDefault()}
+      <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 md:mt-14">
+        {roles.map((role) => {
+          const Icon = role.icon;
+          return (
+            <article
+              key={role.title}
+              className="group flex flex-col rounded-2xl border border-calm-sage/10 bg-white/90 p-6 shadow-soft-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-soft-md"
             >
-              {item.title}
-            </a>
-          </article>
-        ))}
+              <div
+                className={`mb-4 flex h-11 w-11 items-center justify-center rounded-xl ${role.bg}`}
+              >
+                <Icon
+                  className={`h-5 w-5 ${role.accent}`}
+                  strokeWidth={1.8}
+                />
+              </div>
+              <h3 className="text-base font-semibold text-charcoal">
+                {role.title}
+              </h3>
+              <p className="mt-2 flex-1 text-sm leading-relaxed text-charcoal/65">
+                {role.description}
+              </p>
+              <Link
+                to={role.route}
+                className={`mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-colors duration-200 ${role.accent} group-hover:underline`}
+              >
+                {role.cta}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+              </Link>
+            </article>
+          );
+        })}
       </div>
     </section>
   );

@@ -42,9 +42,10 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ data }) => {
     : "Depression";
 
   return (
-    <div className="min-h-screen bg-wellness-bg py-12 px-6 animate-fadeIn flex flex-col items-center">
+    <div className="responsive-page bg-wellness-bg animate-fadeIn">
+      <div className="responsive-container section-stack py-8 sm:py-12">
        
-       <div className="w-full max-w-3xl mb-16 flex justify-between items-center">
+       <div className="w-full max-w-screen-lg mx-auto flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
        <div className="font-serif text-2xl font-normal text-wellness-text tracking-wide cursor-pointer hover:opacity-80 transition-smooth" onClick={() => navigate('/')}>
           MANAS<span className="font-semibold text-calm-sage">360</span>
         </div>
@@ -53,7 +54,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ data }) => {
         </div>
       </div>
 
-      <div className="w-full max-w-2xl bg-white rounded-[40px] shadow-soft-xl border border-calm-sage/10 p-10 md:p-14 text-center">
+      <div className="w-full max-w-screen-md mx-auto bg-white rounded-[40px] shadow-soft-xl border border-calm-sage/10 p-6 sm:p-10 md:p-14 text-center">
         
         <div className="text-7xl mb-6 animate-float">{emoji}</div>
         
@@ -95,10 +96,10 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ data }) => {
           </div>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="section-stack">
           <div className="flex flex-col md:flex-row gap-4 w-full">
             <button className="
-              group flex-1 py-4 px-6
+              group flex-1 min-h-[3rem] px-6
               bg-white border-2 border-calm-sage text-calm-sage
               rounded-full font-sans font-semibold text-base md:text-lg
               transition-smooth
@@ -110,7 +111,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ data }) => {
             </button>
             
             <button className="
-              group flex-1 py-4 px-6
+              group flex-1 min-h-[3rem] px-6
               bg-white border-2 border-gentle-blue text-gentle-blue
               rounded-full font-sans font-semibold text-base md:text-lg
               transition-smooth
@@ -125,7 +126,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ data }) => {
           <button 
             onClick={() => navigate('/')} 
             className="
-              w-full py-5
+              responsive-action-btn w-full
               bg-wellness-surface border-2 border-calm-sage/20 text-wellness-text
               rounded-full font-sans font-medium text-base
               transition-smooth
@@ -139,6 +140,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({ data }) => {
 
       </div>
 
+      </div>
     </div>
   );
 };

@@ -13,6 +13,15 @@ import AnalyticsPage from './pages/therapist/AnalyticsPage'
 import LoginWidget from './components/LoginWidget'
 import SessionDetailPage from './pages/therapist/SessionDetailPage'
 import ProtectedRoute from './components/ProtectedRoute'
+import DashboardPage from './pages/patient/DashboardPage'
+import ProvidersPage from './pages/patient/ProvidersPage'
+import ProviderDetailPage from './pages/patient/ProviderDetailPage'
+import BookSessionPage from './pages/patient/BookSessionPage'
+import SessionsPage from './pages/patient/SessionsPage'
+import AIChatPage from './pages/patient/AIChatPage'
+import ProfilePage from './pages/patient/ProfilePage'
+import LiveSessionPage from './pages/patient/LiveSessionPage'
+import AdminLoginPage from './pages/admin/AdminLoginPage'
 
 interface AssessmentData {
   symptoms: string[];
@@ -79,7 +88,19 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/login" element={<LoginWidget />} />
+        <Route path="/auth/login" element={<LoginWidget initialMode="login" />} />
+        <Route path="/auth/signup" element={<LoginWidget initialMode="register" />} />
+        <Route path="/admin/login" element={<AdminLoginPage />} />
+        <Route path="/login" element={<Navigate to="/auth/login" replace />} />
+        <Route path="/register" element={<Navigate to="/auth/signup" replace />} />
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+        <Route path="/providers" element={<ProtectedRoute><ProvidersPage /></ProtectedRoute>} />
+        <Route path="/providers/:id" element={<ProtectedRoute><ProviderDetailPage /></ProtectedRoute>} />
+        <Route path="/book/:providerId" element={<ProtectedRoute><BookSessionPage /></ProtectedRoute>} />
+        <Route path="/sessions" element={<ProtectedRoute><SessionsPage /></ProtectedRoute>} />
+        <Route path="/sessions/:id/live" element={<ProtectedRoute><LiveSessionPage /></ProtectedRoute>} />
+        <Route path="/ai-chat" element={<ProtectedRoute><AIChatPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

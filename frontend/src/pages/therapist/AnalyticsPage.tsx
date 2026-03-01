@@ -20,10 +20,11 @@ const AnalyticsPage: React.FC = () => {
   const series = useMemo(() => tsQ.data?.data ?? [], [tsQ.data]);
 
   return (
-    <div className="p-6">
-      <h2 className="text-xl font-semibold mb-4">Therapist Analytics</h2>
+    <div className="responsive-page">
+      <div className="responsive-container section-stack">
+      <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold">Therapist Analytics</h2>
 
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         <DateRangePicker from={from} to={to} onChange={(f,t) => { setFrom(new Date(f).toISOString()); setTo(new Date(t).toISOString()); }} />
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-600">Granularity</label>
@@ -35,23 +36,23 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-white p-4 rounded border">
+      <div className="responsive-grid-3">
+        <div className="responsive-card bg-white">
           <div className="text-sm text-gray-500">Completion Rate</div>
           <div className="text-2xl font-semibold mt-2">{summaryQ.data?.data?.completionRate ?? '—'}%</div>
         </div>
-        <div className="bg-white p-4 rounded border">
+        <div className="responsive-card bg-white">
           <div className="text-sm text-gray-500">Avg Session (min)</div>
           <div className="text-2xl font-semibold mt-2">{summaryQ.data?.data?.avgMinutes ?? '—'}</div>
         </div>
-        <div className="bg-white p-4 rounded border">
+        <div className="responsive-card bg-white">
           <div className="text-sm text-gray-500">Sessions</div>
           <div className="text-2xl font-semibold mt-2">{summaryQ.data?.data?.sessions ?? '—'}</div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-white p-4 rounded border">
+      <div className="responsive-grid-2">
+        <div className="responsive-card bg-white">
           <div className="text-sm text-gray-600 mb-2">Completion Rate Over Time</div>
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
@@ -66,7 +67,7 @@ const AnalyticsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded border">
+        <div className="responsive-card bg-white">
           <div className="text-sm text-gray-600 mb-2">Avg Duration (minutes)</div>
           <div style={{ width: '100%', height: 300 }}>
             <ResponsiveContainer>
@@ -82,9 +83,9 @@ const AnalyticsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-6 bg-white p-4 rounded border">
+      <div className="responsive-card bg-white">
         <div className="text-sm text-gray-600 mb-2">Drop-off distribution</div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {dropQ.data?.data?.length ? (
             dropQ.data.data.map((d: any) => (
               <div key={d.questionIndex} className="p-2 border rounded">
@@ -96,6 +97,7 @@ const AnalyticsPage: React.FC = () => {
             <div className="text-sm text-gray-500">No data</div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

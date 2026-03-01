@@ -10,9 +10,9 @@ export const OnboardingName: React.FC<OnboardingNameProps> = ({ onNext }) => {
   const [pronouns, setPronouns] = useState('');
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#E9F5FF] to-white p-6 animate-fade-in">
+    <div className="responsive-page flex items-center justify-center bg-gradient-to-b from-[#E9F5FF] to-white animate-fade-in">
       
-      <div className="w-full max-w-md">
+      <div className="responsive-container w-full max-w-md">
         <h1 className="font-serif text-[2.5rem] font-bold text-[#0A3A78] text-center mb-4">
           Let's Start with You
         </h1>
@@ -20,8 +20,8 @@ export const OnboardingName: React.FC<OnboardingNameProps> = ({ onNext }) => {
           Please share your name with us.
         </p>
 
-        <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-[#E0F2FE]">
-          <div className="flex gap-4 mb-5">
+        <div className="bg-white rounded-[32px] p-6 sm:p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-[#E0F2FE]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
             <div className="flex-1">
               <label className="block text-sm font-medium text-slate-500 mb-2 ml-1">First name</label>
               <input 
@@ -61,7 +61,7 @@ export const OnboardingName: React.FC<OnboardingNameProps> = ({ onNext }) => {
             }}
             disabled={!firstName || !lastName}
             className={`
-              w-full py-4 rounded-full text-lg font-bold text-white transition-all
+              responsive-action-btn w-full rounded-full text-lg font-bold text-white transition-all
               ${(firstName && lastName) 
                 ? 'bg-gradient-to-r from-[#1E59FF] to-[#004BCE] hover:shadow-xl hover:-translate-y-1' 
                 : 'bg-slate-300 cursor-not-allowed'}

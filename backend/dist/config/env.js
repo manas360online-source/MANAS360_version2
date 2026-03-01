@@ -12,7 +12,7 @@ const parsePort = (value) => {
     if (Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
         return parsedPort;
     }
-    return 5000;
+    return 5001;
 };
 const parseBoolean = (value, fallback = false) => {
     if (value === undefined) {
@@ -27,11 +27,18 @@ const parseNumber = (value, fallback) => {
     }
     return fallback;
 };
+const parseCorsOrigins = (value) => {
+    const raw = value ?? 'http://localhost:3000';
+    return raw
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter((origin) => origin.length > 0);
+};
 exports.env = Object.freeze({
     nodeEnv: parseNodeEnv(process.env.NODE_ENV),
     port: parsePort(process.env.PORT),
     apiPrefix: process.env.API_PREFIX ?? '/api',
-    corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+    corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
     databaseUrl: process.env.DATABASE_URL,
     jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? 'change-access-secret',
     jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? 'change-refresh-secret',

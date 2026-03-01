@@ -46,26 +46,30 @@ const SessionDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { data, isLoading, isError } = useSessionDetail(id);
 
-  if (isLoading) return <div className="p-6">Loading session…</div>;
-  if (isError) return <div className="p-6 text-red-600">Failed to load session</div>;
+  if (isLoading) return <div className="responsive-page"><div className="responsive-container">Loading session…</div></div>;
+  if (isError) return <div className="responsive-page"><div className="responsive-container text-red-600">Failed to load session</div></div>;
 
   const detail = data?.session ? data : null;
 
   return (
-    <div className="p-4">
+    <div className="responsive-page">
+      <div className="responsive-container">
       <button onClick={() => navigate(-1)} className="mb-4 text-sm text-blue-600">Back</button>
-      <SessionHeader session={detail?.session} />
+      <div className="responsive-card p-0 overflow-hidden">
+        <SessionHeader session={detail?.session} />
+      </div>
 
-      <div className="grid grid-cols-3 gap-4 mt-4">
-        <div className="col-span-1">
-          <PatientCard patient={detail?.patient} />
-          <div className="mt-4"><BranchVisualizer branching={detail?.branching} /></div>
+      <div className="responsive-grid-3 mt-4">
+        <div className="lg:col-span-1 section-stack">
+          <div className="responsive-card"><PatientCard patient={detail?.patient} /></div>
+          <div className="responsive-card"><BranchVisualizer branching={detail?.branching} /></div>
         </div>
-        <div className="col-span-2 h-[720px]">
-          <div className="border rounded h-full bg-white">
+        <div className="lg:col-span-2 h-[640px] md:h-[720px]">
+          <div className="border rounded-xl h-full bg-white">
             <SessionResponseViewer sessionId={id as string} />
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

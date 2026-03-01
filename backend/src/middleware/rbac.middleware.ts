@@ -9,7 +9,7 @@ const db = prisma as any;
  * Extensible enum for user roles
  * Can be extended for superadmin, moderator, etc.
  */
-export type UserRole = 'patient' | 'therapist' | 'admin' | 'superadmin';
+export type UserRole = 'patient' | 'therapist' | 'psychiatrist' | 'coach' | 'admin' | 'superadmin';
 
 /**
  * Role hierarchy for logical grouping
@@ -18,6 +18,8 @@ export type UserRole = 'patient' | 'therapist' | 'admin' | 'superadmin';
 export const roleHierarchy: Record<UserRole, number> = {
 	patient: 1,
 	therapist: 2,
+	psychiatrist: 2,
+	coach: 2,
 	admin: 3,
 	superadmin: 4,
 };
@@ -195,7 +197,7 @@ export const requirePatientRole = requireRole('patient') as (
  * Backward compatibility: Require therapist role
  * @deprecated Use requireRole('therapist') instead
  */
-export const requireTherapistRole = requireRole('therapist') as (
+export const requireTherapistRole = requireRole(['therapist', 'psychiatrist', 'coach']) as (
 	req: Request,
 	_res: Response,
 	next: NextFunction,
@@ -249,6 +251,8 @@ export const requirePermission = (
 		const rolePermissions: Record<UserRole, string[]> = {
 			patient: ['read_own_profile', 'book_session', 'view_therapists'],
 			therapist: ['read_own_profile', 'manage_sessions', 'view_earnings'],
+			psychiatrist: ['read_own_profile', 'manage_sessions', 'view_earnings'],
+			coach: ['read_own_profile', 'manage_sessions', 'view_earnings'],
 			admin: ['read_all_profiles', 'manage_users', 'manage_therapists', 'view_analytics'],
 			superadmin: [
 				'read_all_profiles',

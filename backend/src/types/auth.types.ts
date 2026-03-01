@@ -7,7 +7,8 @@ export interface RequestMeta {
 export interface RegisterEmailInput {
 	email: string;
 	password: string;
-	name?: string;
+	name: string;
+	role: 'patient' | 'therapist' | 'psychiatrist' | 'coach';
 }
 
 export interface VerifyEmailOtpInput {

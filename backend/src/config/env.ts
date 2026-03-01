@@ -15,7 +15,7 @@ const parsePort = (value: string | undefined): number => {
 		return parsedPort;
 	}
 
-	return 5000;
+	return 5001;
 };
 
 const parseBoolean = (value: string | undefined, fallback = false): boolean => {
@@ -36,11 +36,19 @@ const parseNumber = (value: string | undefined, fallback: number): number => {
 	return fallback;
 };
 
+const parseCorsOrigins = (value: string | undefined): string[] => {
+	const raw = value ?? 'http://localhost:3000';
+	return raw
+		.split(',')
+		.map((origin) => origin.trim())
+		.filter((origin) => origin.length > 0);
+};
+
 export interface EnvConfig {
 	nodeEnv: NodeEnv;
 	port: number;
 	apiPrefix: string;
-	corsOrigin: string;
+	corsOrigins: string[];
 	databaseUrl?: string;
 	jwtAccessSecret: string;
 	jwtRefreshSecret: string;
@@ -79,7 +87,7 @@ export const env: EnvConfig = Object.freeze({
 	nodeEnv: parseNodeEnv(process.env.NODE_ENV),
 	port: parsePort(process.env.PORT),
 	apiPrefix: process.env.API_PREFIX ?? '/api',
-	corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+	corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
 	databaseUrl: process.env.DATABASE_URL,
 	jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? 'change-access-secret',
 	jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? 'change-refresh-secret',

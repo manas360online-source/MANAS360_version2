@@ -51,3 +51,13 @@ export const validateOtp = (value: unknown): string => {
 	return otp;
 };
 
+export const validatePublicSignupRole = (value: unknown): 'patient' | 'therapist' | 'psychiatrist' | 'coach' => {
+	const role = assertString(value, 'role').toLowerCase();
+
+	if (role === 'patient' || role === 'therapist' || role === 'psychiatrist' || role === 'coach') {
+		return role;
+	}
+
+	throw new AppError('Invalid role. Allowed roles: patient, therapist, psychiatrist, coach', 400);
+};
+

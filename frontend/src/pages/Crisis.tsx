@@ -4,9 +4,9 @@ export const CrisisPage: React.FC = () => {
   const [showCounselor, setShowCounselor] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#FEF2F2] flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+    <div className="responsive-page bg-[#FEF2F2] flex flex-col items-center justify-center text-center animate-fade-in">
       
-      <div className="max-w-2xl bg-white p-8 md:p-12 rounded-[40px] shadow-xl border border-red-100">
+      <div className="responsive-container max-w-screen-md bg-white p-6 sm:p-8 md:p-12 rounded-[40px] shadow-xl border border-red-100">
         
         {/* Warning Icon */}
         <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-inner">
@@ -25,7 +25,7 @@ export const CrisisPage: React.FC = () => {
           You are not alone. Help is available <span className="font-bold text-red-600">RIGHT NOW</span>.
         </p>
 
-        <div className="space-y-4 w-full max-w-md mx-auto mb-12">
+        <div className="section-stack w-full max-w-md mx-auto mb-12">
           <a href="tel:18005990019" className="block w-full py-4 bg-red-600 text-white rounded-full font-bold text-lg hover:bg-red-700 transition shadow-lg shadow-red-200">
             📞 CALL TELE-MANAS: 1800-599-0019
           </a>
@@ -45,13 +45,13 @@ export const CrisisPage: React.FC = () => {
           <div className="flex flex-col md:flex-row gap-4 justify-center">
             <button 
               onClick={() => setShowCounselor(true)}
-              className="px-8 py-3 bg-emerald-100 text-emerald-800 font-bold rounded-full hover:bg-emerald-200 transition"
+              className="responsive-action-btn px-8 bg-emerald-100 text-emerald-800 font-bold rounded-full hover:bg-emerald-200 transition"
             >
               Yes, I'm safe – Connect me to a counselor
             </button>
             <a 
               href="tel:112"
-              className="px-8 py-3 bg-red-100 text-red-800 font-bold rounded-full hover:bg-red-200 transition"
+              className="responsive-action-btn px-8 bg-red-100 text-red-800 font-bold rounded-full hover:bg-red-200 transition"
             >
               No, I need help now – Call 112
             </a>

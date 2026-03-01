@@ -11,6 +11,7 @@ import paymentRoutes from './payment.routes';
 import subscriptionRoutes from './subscription.routes';
 import webhookRoutes from './webhook.routes';
 import leadRoutes from './lead.routes';
+import patientV1Routes from './patient-v1.routes';
 
 const router = Router();
 
@@ -23,6 +24,8 @@ router.get('/health', (_req, res) => {
 });
 
 router.use('/auth', authRoutes);
+router.use('/v1/auth', authRoutes);
+router.use('/v1', patientV1Routes);
 router.use('/v1/users', userRoutes);
 router.use('/v1/patients', patientRoutes);
 router.use('/v1/therapists', therapistRoutes);

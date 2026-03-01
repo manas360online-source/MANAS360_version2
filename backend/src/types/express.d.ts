@@ -133,7 +133,7 @@ declare global {
 				userId: string;
 				sessionId: string;
 				jti: string;
-				role?: 'patient' | 'therapist' | 'admin' | 'superadmin';
+				role?: 'patient' | 'therapist' | 'psychiatrist' | 'coach' | 'admin' | 'superadmin';
 			};
 			validatedUserUpdate?: ProfileUpdatePayload;
 			validatedChangePassword?: ChangePasswordPayload;

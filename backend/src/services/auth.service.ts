@@ -35,6 +35,36 @@ const nowPlusMinutes = (minutes: number): Date => new Date(Date.now() + minutes 
 
 const nowPlusDays = (days: number): Date => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
+const toPrismaUserRole = (role: RegisterEmailInput['role']): 'PATIENT' | 'THERAPIST' | 'PSYCHIATRIST' | 'COACH' => {
+	if (role === 'patient') return 'PATIENT';
+	if (role === 'therapist') return 'THERAPIST';
+	if (role === 'psychiatrist') return 'PSYCHIATRIST';
+	return 'COACH';
+};
+
+let supportedUserRolesCache: Set<string> | null = null;
+
+const getSupportedUserRoles = async (): Promise<Set<string>> => {
+	if (supportedUserRolesCache) {
+		return supportedUserRolesCache;
+	}
+
+	try {
+		const rows = (await db.$queryRawUnsafe(
+			`SELECT e.enumlabel
+			 FROM pg_type t
+			 JOIN pg_enum e ON t.oid = e.enumtypid
+			 WHERE t.typname = 'UserRole'`,
+		)) as Array<{ enumlabel: string }>;
+
+		supportedUserRolesCache = new Set((rows ?? []).map((row) => String(row.enumlabel).toUpperCase()));
+	} catch {
+		supportedUserRolesCache = new Set(['PATIENT', 'THERAPIST', 'ADMIN']);
+	}
+
+	return supportedUserRolesCache;
+};
+
 const audit = async (
 	event: string,
 	status: 'success' | 'failure',
@@ -96,6 +126,12 @@ export const registerWithEmail = async (input: RegisterEmailInput, meta: Request
 	const passwordHash = await hashPassword(input.password);
 	const otp = generateNumericOtp();
 	const otpHash = await hashOtp(otp);
+	const prismaRole = toPrismaUserRole(input.role);
+	const supportedRoles = await getSupportedUserRoles();
+
+	if (!supportedRoles.has(prismaRole)) {
+		throw new AppError(`Selected role '${input.role}' is not enabled yet. Role migration is pending.`, 400);
+	}
 
 	const user = await db.user.create({
 		data: {
@@ -104,14 +140,14 @@ export const registerWithEmail = async (input: RegisterEmailInput, meta: Request
 			emailVerificationOtpHash: otpHash,
 			emailVerificationOtpExpiresAt: nowPlusMinutes(env.otpTtlMinutes),
 			provider: 'LOCAL',
-			role: 'PATIENT',
-			name: input.name ?? null,
-			firstName: input.name?.trim() || '',
+			role: prismaRole,
+			name: input.name,
+			firstName: input.name.trim(),
 			lastName: '',
 		},
 	});
 
-	await audit('REGISTER_SUCCESS', 'success', meta, { userId: user._id, email: user.email });
+	await audit('REGISTER_SUCCESS', 'success', meta, { userId: user.id, email: user.email });
 
 	return {
 		userId: String(user.id),
@@ -247,6 +283,11 @@ export const loginWithPassword = async (input: LoginInput, meta: RequestMeta) =>
 		throw new AppError('Invalid credentials', 401);
 	}
 
+	if (user.email && !user.emailVerified) {
+		await audit('LOGIN_BLOCKED_EMAIL_UNVERIFIED', 'failure', meta, { userId: user.id, email: user.email });
+		throw new AppError('Email verification required before login', 403);
+	}
+
 	if (user.mfaEnabled) {
 		if (!input.mfaCode || !user.mfaSecret || !authenticator.check(input.mfaCode, user.mfaSecret)) {
 			throw new AppError('Invalid MFA code', 401);
@@ -270,6 +311,7 @@ export const loginWithPassword = async (input: LoginInput, meta: RequestMeta) =>
 			id: String(user.id),
 			email: user.email,
 			phone: user.phone,
+			role: user.role,
 			emailVerified: user.emailVerified,
 			phoneVerified: user.phoneVerified,
 			mfaEnabled: user.mfaEnabled,
@@ -335,6 +377,7 @@ export const loginWithGoogle = async (input: GoogleLoginInput, meta: RequestMeta
 			id: String(user.id),
 			email: user.email,
 			phone: user.phone,
+			role: user.role,
 			emailVerified: user.emailVerified,
 			phoneVerified: user.phoneVerified,
 			mfaEnabled: user.mfaEnabled,

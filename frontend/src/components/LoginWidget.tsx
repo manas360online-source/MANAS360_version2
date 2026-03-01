@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getApiErrorMessage } from '../api/auth';
-import { useAuth } from '../context/AuthContext';
+import { getDefaultRouteForRole, useAuth } from '../context/AuthContext';
 
-export default function LoginWidget() {
+export default function LoginWidget({ initialMode = 'login' }: { initialMode?: 'login' | 'register' }) {
   const { user, isAuthenticated, login, register, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from || '/therapist/analytics';
+  const from = (location.state as { from?: string } | null)?.from;
+  const next = new URLSearchParams(location.search).get('next');
 
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
   const [name, setName] = useState('');
+  const [role, setRole] = useState<'patient' | 'therapist' | 'psychiatrist' | 'coach'>('patient');
   const [email, setEmail] = useState('');
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -27,8 +29,9 @@ export default function LoginWidget() {
     setSuccess(null);
     setLoading(true);
     try {
-      await login(identifier.trim(), password);
-      navigate(from, { replace: true });
+      const loggedInUser = await login(identifier.trim(), password);
+      const postLoginRoute = from || next || getDefaultRouteForRole(loggedInUser.role);
+      navigate(postLoginRoute, { replace: true });
     } catch (err) {
       setError(getApiErrorMessage(err, 'Login failed'));
     } finally {
@@ -38,7 +41,7 @@ export default function LoginWidget() {
 
   const onRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) return;
+    if (!name.trim() || !email.trim() || !password.trim()) return;
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -48,9 +51,12 @@ export default function LoginWidget() {
     setSuccess(null);
     setLoading(true);
     try {
-      await register(email.trim(), password, name.trim() || undefined);
-      await login(email.trim(), password);
-      navigate(from, { replace: true });
+      await register(email.trim(), password, name.trim(), role);
+      setSuccess('Registration successful. Email verification is required before full access, and the verification UI flow is currently pending.');
+      setMode('login');
+      setIdentifier(email.trim());
+      setPassword('');
+      setConfirmPassword('');
     } catch (err) {
       setError(getApiErrorMessage(err, 'Registration failed'));
     } finally {
@@ -73,9 +79,11 @@ export default function LoginWidget() {
   };
 
   return (
-    <div className="mx-auto mt-16 max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="responsive-page">
+      <div className="responsive-container">
+        <div className="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-md">
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-slate-900">Authentication</h1>
+        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900">Authentication</h1>
         <div className="flex gap-2">
           <button
             type="button"
@@ -111,12 +119,13 @@ export default function LoginWidget() {
       ) : mode === 'login' ? (
         <form onSubmit={onLogin} className="space-y-3">
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-700">Email or Phone</span>
+            <span className="mb-1 block text-sm text-slate-700">Email</span>
             <input
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               className="w-full rounded border border-slate-300 px-3 py-2"
               placeholder="you@example.com"
+              type="email"
               autoComplete="username"
               required
             />
@@ -140,17 +149,21 @@ export default function LoginWidget() {
           >
             {loading ? 'Signing in...' : 'Login'}
           </button>
+          <button type="button" className="w-full cursor-default text-sm text-slate-600 underline">
+            Forgot Password
+          </button>
         </form>
       ) : (
         <form onSubmit={onRegister} className="space-y-3">
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-700">Full Name (optional)</span>
+            <span className="mb-1 block text-sm text-slate-700">Full Name</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded border border-slate-300 px-3 py-2"
               placeholder="Your name"
               autoComplete="name"
+              required
             />
           </label>
           <label className="block">
@@ -187,6 +200,20 @@ export default function LoginWidget() {
               required
             />
           </label>
+          <label className="block">
+            <span className="mb-1 block text-sm text-slate-700">Role</span>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as 'patient' | 'therapist' | 'psychiatrist' | 'coach')}
+              className="w-full rounded border border-slate-300 px-3 py-2"
+              required
+            >
+              <option value="patient">patient</option>
+              <option value="therapist">therapist</option>
+              <option value="psychiatrist">psychiatrist</option>
+              <option value="coach">coach</option>
+            </select>
+          </label>
           <button
             type="submit"
             disabled={loading}
@@ -199,6 +226,8 @@ export default function LoginWidget() {
 
       {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
       {success && <p className="mt-3 text-sm text-emerald-700">{success}</p>}
+        </div>
+      </div>
     </div>
   );
 }

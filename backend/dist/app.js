@@ -16,7 +16,17 @@ const app = (0, express_1.default)();
 app.disable('x-powered-by');
 app.use((0, helmet_1.default)());
 app.use((0, cors_1.default)({
-    origin: env_1.env.corsOrigin,
+    origin: (origin, callback) => {
+        if (!origin) {
+            callback(null, true);
+            return;
+        }
+        if (env_1.env.corsOrigins.includes(origin)) {
+            callback(null, true);
+            return;
+        }
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
 }));
 app.use(express_1.default.json({

@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 import { MegaPanel, MegaNavOption } from './MegaPanel';
 
 type TabLabel =
@@ -75,6 +77,7 @@ const tabs: TabConfig[] = [
 
 export const MegaNav: React.FC<MegaNavProps> = ({ tone = 'dark' }) => {
   const [activeTab, setActiveTab] = useState<TabLabel | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<number | null>(null);
 
@@ -94,6 +97,7 @@ export const MegaNav: React.FC<MegaNavProps> = ({ tone = 'dark' }) => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setActiveTab(null);
+        setMobileMenuOpen(false);
       }
     };
 
@@ -114,6 +118,29 @@ export const MegaNav: React.FC<MegaNavProps> = ({ tone = 'dark' }) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handleDesktopEnter = (tab: TabLabel) => {
     if (closeTimerRef.current) {
       window.clearTimeout(closeTimerRef.current);
@@ -129,10 +156,13 @@ export const MegaNav: React.FC<MegaNavProps> = ({ tone = 'dark' }) => {
   };
 
   const isLight = tone === 'light';
+  const closeMobileMenu = () => {
+    setMobileMenuOpen(false);
+  };
 
   return (
     <div ref={rootRef} className="relative" onMouseLeave={handleDesktopLeave}>
-      <nav className={`hidden items-center justify-between gap-1 border-t px-1 pt-1 md:flex ${isLight ? 'border-calm-sage/25' : 'border-calm-sage/30'}`} aria-label="Mega navigation tabs">
+      <nav className={`mt-2 hidden items-center justify-between gap-0.5 border-t px-0.5 pt-1.5 md:flex ${isLight ? 'border-calm-sage/12' : 'border-cream/10'}`} aria-label="Mega navigation tabs">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.label;
 
@@ -143,14 +173,14 @@ export const MegaNav: React.FC<MegaNavProps> = ({ tone = 'dark' }) => {
               onMouseEnter={() => handleDesktopEnter(tab.label)}
               onFocus={() => handleDesktopEnter(tab.label)}
               onClick={() => setActiveTab(isActive ? null : tab.label)}
-              className={`min-h-[36px] flex-1 whitespace-nowrap rounded-t-md px-2 py-1 text-xs font-semibold transition-all duration-[250ms] ease-out ${
+              className={`min-h-[36px] flex-1 whitespace-nowrap rounded-md px-2.5 py-1.5 text-[13px] font-medium tracking-wide transition-all duration-[250ms] ease-out ${
                 isActive
                   ? isLight
-                    ? 'border-b-2 border-calm-sage bg-white text-charcoal'
-                    : 'border-b-2 border-calm-sage bg-charcoal/80 text-cream'
+                    ? 'bg-calm-sage/10 text-charcoal'
+                    : 'bg-cream/10 text-cream'
                   : isLight
-                    ? 'border-b-2 border-transparent text-charcoal hover:bg-white/75'
-                    : 'border-b-2 border-transparent text-cream hover:bg-charcoal/65'
+                    ? 'text-charcoal/70 hover:bg-calm-sage/5 hover:text-charcoal'
+                    : 'text-cream/70 hover:bg-cream/5 hover:text-cream'
               }`}
               aria-expanded={isActive}
               aria-controls={`panel-${tab.label}`}
@@ -179,45 +209,82 @@ export const MegaNav: React.FC<MegaNavProps> = ({ tone = 'dark' }) => {
         ) : null}
       </div>
 
-      <div className="mt-2 max-h-[calc(100vh-170px)] space-y-2 overflow-y-auto pr-1 md:hidden" aria-label="Mobile mega navigation accordion">
-        {tabs.map((tab) => {
-          const isActive = activeTab === tab.label;
-
-          return (
-            <section key={tab.label} className={`rounded-xl border px-2 py-1 ${isLight ? 'border-calm-sage/30 bg-white/95' : 'border-calm-sage/35 bg-charcoal/92'}`}>
-              <button
-                type="button"
-                onClick={() => setActiveTab(isActive ? null : tab.label)}
-                className={`flex min-h-[44px] w-full items-center justify-between rounded-lg px-3 text-left text-sm font-semibold transition-all duration-[250ms] ease-out ${
-                  isActive
-                    ? isLight
-                      ? 'bg-cream border-b-2 border-calm-sage text-charcoal'
-                      : 'bg-charcoal border-b-2 border-calm-sage text-cream'
-                    : isLight
-                      ? 'text-charcoal hover:bg-cream/80'
-                      : 'text-cream hover:bg-charcoal/75'
-                }`}
-                aria-expanded={isActive}
-                aria-controls={`mobile-panel-${tab.label}`}
-              >
-                <span>{tab.label}</span>
-                <span aria-hidden="true" className={`transition-transform duration-[250ms] ${isActive ? 'rotate-180' : ''}`}>
-                  ▾
-                </span>
-              </button>
-
-              <div
-                id={`mobile-panel-${tab.label}`}
-                className={`overflow-hidden transition-all duration-[250ms] ease-out ${
-                  isActive ? 'max-h-[1200px] opacity-100 py-2' : 'max-h-0 opacity-0'
-                }`}
-              >
-                <MegaPanel items={tab.items} onNavigate={() => setActiveTab(null)} mobile tone={tone} />
-              </div>
-            </section>
-          );
-        })}
+      <div className="mt-2 flex justify-start md:hidden">
+        <button
+          type="button"
+          onClick={() => setMobileMenuOpen(true)}
+          className={`inline-flex min-h-[36px] items-center rounded-md border px-2.5 py-1 transition-all duration-[250ms] ease-out ${
+            isLight
+              ? 'border-calm-sage/35 bg-white/95 text-charcoal hover:bg-cream'
+              : 'border-calm-sage/35 bg-charcoal/92 text-cream hover:bg-charcoal/75'
+          }`}
+          aria-expanded={mobileMenuOpen}
+          aria-controls="mobile-left-drawer"
+          aria-label="Open sidebar menu"
+        >
+          <span aria-hidden="true" className="inline-flex h-4 w-4 flex-col justify-between">
+            <span className={`h-0.5 w-4 rounded ${isLight ? 'bg-charcoal' : 'bg-cream'}`} />
+            <span className={`h-0.5 w-4 rounded ${isLight ? 'bg-charcoal' : 'bg-cream'}`} />
+            <span className={`h-0.5 w-4 rounded ${isLight ? 'bg-charcoal' : 'bg-cream'}`} />
+          </span>
+        </button>
       </div>
+
+      {/* Portal: render mobile drawer at document.body so it escapes the header stacking context */}
+      {createPortal(
+        <div
+          id="mobile-left-drawer"
+          className={`fixed inset-0 z-[9999] transition-opacity duration-300 md:hidden ${
+            mobileMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+          }`}
+          aria-label="Mobile mega navigation sidebar"
+        >
+          <div
+            className="absolute inset-0 z-0 bg-charcoal/40 backdrop-blur-[2px]"
+            onClick={closeMobileMenu}
+            aria-hidden="true"
+          />
+
+          <aside
+            className={`absolute inset-y-0 left-0 z-10 w-[85%] max-w-sm overflow-y-auto border-r border-calm-sage/15 px-3 pb-6 pt-4 shadow-soft-lg transition-transform duration-300 ease-out will-change-transform ${
+              isLight ? 'bg-cream' : 'bg-charcoal'
+            } ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+            onClick={(event) => event.stopPropagation()}
+            aria-modal="true"
+            role="dialog"
+          >
+              <div className="mb-4 flex items-center justify-between">
+                <span className={`font-serif text-lg font-light ${isLight ? 'text-charcoal' : 'text-cream'}`}>
+                  MANAS<span className="font-semibold">360</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={closeMobileMenu}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-200 ${
+                    isLight ? 'text-charcoal/60 hover:bg-charcoal/5 hover:text-charcoal' : 'text-cream/60 hover:bg-cream/10 hover:text-cream'
+                  }`}
+                  aria-label="Close menu"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {tabs.map((tab) => (
+                  <section key={tab.label}>
+                    <h3 className={`mb-1.5 px-1 text-[11px] font-bold uppercase tracking-widest ${
+                      isLight ? 'text-charcoal/40' : 'text-cream/40'
+                    }`}>
+                      {tab.label}
+                    </h3>
+                    <MegaPanel items={tab.items} onNavigate={closeMobileMenu} mobile tone={tone} />
+                  </section>
+                ))}
+              </div>
+          </aside>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 };

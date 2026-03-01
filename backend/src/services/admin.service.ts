@@ -5,11 +5,13 @@ import type { PaginationMeta } from '../utils/pagination';
 
 const db = prisma as any;
 
-const mapRoleFilterToEnum = (role?: string): 'PATIENT' | 'THERAPIST' | 'ADMIN' | undefined => {
+const mapRoleFilterToEnum = (role?: string): 'PATIENT' | 'THERAPIST' | 'PSYCHIATRIST' | 'COACH' | 'ADMIN' | undefined => {
 	if (!role) return undefined;
 	const normalized = role.toLowerCase();
 	if (normalized === 'patient') return 'PATIENT';
 	if (normalized === 'therapist') return 'THERAPIST';
+	if (normalized === 'psychiatrist') return 'PSYCHIATRIST';
+	if (normalized === 'coach') return 'COACH';
 	if (normalized === 'admin') return 'ADMIN';
 	throw new AppError('Invalid role filter', 400);
 };
@@ -39,7 +41,7 @@ export interface AdminListUsersResponse {
 		email: string;
 		firstName: string;
 		lastName: string;
-		role: 'patient' | 'therapist' | 'admin';
+		role: 'patient' | 'therapist' | 'psychiatrist' | 'coach' | 'admin';
 		createdAt: Date;
 		updatedAt: Date;
 	}>;

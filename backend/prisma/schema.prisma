@@ -12,6 +12,8 @@ datasource db {
 enum UserRole {
   PATIENT
   THERAPIST
+  PSYCHIATRIST
+  COACH
   ADMIN
 }
 
@@ -101,12 +103,23 @@ model User {
   financialAuditEvents      FinancialAuditLog[]       @relation("UserFinancialAudits")
   authSessions              AuthSession[]
   authAuditLogs             AuthAuditLog[]
+  aiConversations           AIConversation[]
+  notifications             Notification[]
+  bookingIntentsAsPatient   SessionBookingIntent[] @relation("BookingIntentPatient")
+  bookingIntentsAsProvider  SessionBookingIntent[] @relation("BookingIntentProvider")
 
   @@index([email])
   @@index([phone])
   @@index([role])
   @@index([isDeleted])
   @@map("users")
+}
+
+enum BookingIntentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
 }
 
 model AuthSession {
@@ -496,6 +509,11 @@ model TherapySession {
   patientProfileId   String
   therapistProfileId String
   dateTime           DateTime
+  durationMinutes    Int           @default(50)
+  sessionFeeMinor    BigInt        @default(0)
+  paymentStatus      String        @default("UNPAID")
+  agoraChannel       String?
+  agoraToken         String?
   status             BookingStatus @default(PENDING)
 
   // Encrypted therapist note (optional)
@@ -515,6 +533,62 @@ model TherapySession {
   @@index([therapistProfileId, dateTime])
   @@index([patientProfileId, dateTime])
   @@map("therapy_sessions")
+}
+
+model SessionBookingIntent {
+  id             String             @id @default(uuid())
+  patientId      String
+  providerId     String
+  scheduledAt    DateTime
+  durationMinute Int                @default(50)
+  amountMinor    BigInt
+  currency       String             @default("INR")
+  razorpayOrderId String            @unique
+  razorpayPaymentId String?
+  status         BookingIntentStatus @default(PENDING)
+  sessionId      String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  patient  User @relation("BookingIntentPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  provider User @relation("BookingIntentProvider", fields: [providerId], references: [id], onDelete: Restrict)
+
+  @@index([patientId, status, createdAt])
+  @@index([providerId, scheduledAt])
+  @@index([scheduledAt])
+  @@map("session_booking_intents")
+}
+
+model AIConversation {
+  id        String   @id @default(uuid())
+  userId    String
+  messages  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("ai_conversations")
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String
+  title       String
+  message     String
+  payload     Json?
+  isRead      Boolean  @default(false)
+  scheduledAt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@index([scheduledAt])
+  @@map("notifications")
 }
 
 // ============ SESSION TEMPLATES LIBRARY ============

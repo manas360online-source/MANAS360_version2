@@ -11,7 +11,7 @@ export interface AuthUser {
 	id: string;
 	email: string | null;
 	phone: string | null;
-	role: string;
+	role: 'patient' | 'therapist' | 'psychiatrist' | 'coach' | 'admin' | string;
 	firstName?: string | null;
 	lastName?: string | null;
 	emailVerified?: boolean;
@@ -27,7 +27,8 @@ export interface LoginPayload {
 export interface RegisterPayload {
 	email: string;
 	password: string;
-	name?: string;
+	name: string;
+	role: 'patient' | 'therapist' | 'psychiatrist' | 'coach';
 }
 
 export const getApiErrorMessage = (error: unknown, fallback = 'Request failed'): string => {
@@ -42,6 +43,20 @@ export const login = async (payload: LoginPayload): Promise<AuthUser> => {
 
 export const register = async (payload: RegisterPayload): Promise<void> => {
 	await http.post<ApiEnvelope<{ userId: string; email: string; message: string }>>('/auth/register', payload);
+};
+
+export const googleLogin = async (idToken: string): Promise<AuthUser> => {
+	const response = await http.post<ApiEnvelope<{ user: AuthUser; sessionId: string }>>('/auth/login/google', { idToken });
+	return response.data.data.user;
+};
+
+export const signupWithPhone = async (phone: string): Promise<{ userId: string; phone: string; message: string; devOtp?: string }> => {
+	const response = await http.post<ApiEnvelope<{ userId: string; phone: string; message: string; devOtp?: string }>>('/auth/signup/phone', { phone });
+	return response.data.data;
+};
+
+export const verifyPhoneSignupOtp = async (phone: string, otp: string): Promise<void> => {
+	await http.post('/auth/verify/phone-otp', { phone, otp });
 };
 
 export const me = async (): Promise<AuthUser> => {

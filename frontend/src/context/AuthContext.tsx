@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   login as loginApi,
   logout as logoutApi,
@@ -7,12 +7,34 @@ import {
   type AuthUser,
 } from '../api/auth';
 
+export type AppRole = 'patient' | 'therapist' | 'psychiatrist' | 'coach' | 'admin';
+
+const normalizeRole = (value: unknown): AppRole | null => {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const normalized = value.toLowerCase();
+  if (normalized === 'patient' || normalized === 'therapist' || normalized === 'psychiatrist' || normalized === 'coach' || normalized === 'admin') {
+    return normalized;
+  }
+
+  return null;
+};
+
+export const getDefaultRouteForRole = (role: unknown): string => {
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole === 'admin') return '/admin/login';
+  if (normalizedRole === 'therapist' || normalizedRole === 'psychiatrist' || normalizedRole === 'coach') return '/therapist/analytics';
+  return '/dashboard';
+};
+
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   isAuthenticated: boolean;
-  login: (identifier: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<AuthUser>;
+  register: (email: string, password: string, name: string, role: 'patient' | 'therapist' | 'psychiatrist' | 'coach') => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 };
@@ -22,8 +44,24 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const hasCheckedInitialAuthRef = useRef(false);
+
+  const hasSessionHint = useCallback((): boolean => {
+    if (typeof document === 'undefined') {
+      return false;
+    }
+
+    const csrfCookieName = (import.meta.env.VITE_CSRF_COOKIE_NAME || 'csrf_token').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?:^|; )${csrfCookieName}=`).test(document.cookie);
+  }, []);
 
   const checkAuth = useCallback(async () => {
+    if (!hasSessionHint()) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       const currentUser = await meApi();
       setUser(currentUser);
@@ -32,19 +70,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
- 	}, []);
+ 	}, [hasSessionHint]);
 
   useEffect(() => {
+    if (hasCheckedInitialAuthRef.current) {
+      return;
+    }
+
+    hasCheckedInitialAuthRef.current = true;
     void checkAuth();
   }, [checkAuth]);
 
   const login = useCallback(async (identifier: string, password: string) => {
     const loggedInUser = await loginApi({ identifier, password });
     setUser(loggedInUser);
+    return loggedInUser;
   }, []);
 
-  const register = useCallback(async (email: string, password: string, name?: string) => {
-    await registerApi({ email, password, name });
+  const register = useCallback(async (email: string, password: string, name: string, role: 'patient' | 'therapist' | 'psychiatrist' | 'coach') => {
+    await registerApi({ email, password, name, role });
   }, []);
 
   const logout = useCallback(async () => {

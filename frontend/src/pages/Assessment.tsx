@@ -70,9 +70,10 @@ export const Assessment: React.FC<AssessmentProps> = ({ onSubmit }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-wellness-bg flex flex-col items-center py-12 px-6 animate-fadeIn">
+    <div className="responsive-page bg-wellness-bg animate-fadeIn">
+      <div className="responsive-container section-stack py-8 sm:py-12">
       {/* Header */}
-      <div className="w-full max-w-3xl mb-16 flex justify-between items-center">
+      <div className="w-full max-w-screen-lg mx-auto flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
         <div className="font-serif text-2xl font-normal text-wellness-text tracking-wide cursor-pointer hover:opacity-80 transition-smooth" onClick={() => navigate('/')}>
           MANAS<span className="font-semibold text-calm-sage">360</span>
         </div>
@@ -81,11 +82,11 @@ export const Assessment: React.FC<AssessmentProps> = ({ onSubmit }) => {
         </div>
       </div>
 
-      <div className="w-full max-w-2xl space-y-20">
+      <div className="w-full max-w-screen-md mx-auto section-stack gap-12 sm:gap-16 lg:gap-20">
         
         {/* Question 1 */}
         <section>
-          <h2 className="font-serif text-3xl text-wellness-text mb-8 leading-tight font-light">
+          <h2 className="font-serif text-2xl sm:text-3xl text-wellness-text mb-8 leading-tight font-light">
             In the past 2 weeks, which of these have you experienced?
             <span className="block text-sm font-sans text-wellness-muted font-normal mt-3 tracking-wide">Select all that apply</span>
           </h2>
@@ -113,7 +114,7 @@ export const Assessment: React.FC<AssessmentProps> = ({ onSubmit }) => {
 
         {/* Question 2 */}
         <section>
-          <h2 className="font-serif text-3xl text-wellness-text mb-8 leading-tight font-light">
+          <h2 className="font-serif text-2xl sm:text-3xl text-wellness-text mb-8 leading-tight font-light">
             How much do these affect your daily life?
           </h2>
           <div className="flex flex-wrap gap-3">
@@ -140,10 +141,10 @@ export const Assessment: React.FC<AssessmentProps> = ({ onSubmit }) => {
 
         {/* Question 3 */}
         <section>
-          <h2 className="font-serif text-3xl text-wellness-text mb-8 leading-tight font-light">
+          <h2 className="font-serif text-2xl sm:text-3xl text-wellness-text mb-8 leading-tight font-light">
             Have you thought about hurting yourself?
           </h2>
-          <div className="flex flex-col gap-3 max-w-md">
+          <div className="flex flex-col gap-3 max-w-md w-full">
             {selfHarmOptions.map((option) => {
               const isSelected = selfHarm === option;
               return (
@@ -172,7 +173,7 @@ export const Assessment: React.FC<AssessmentProps> = ({ onSubmit }) => {
             onClick={handleFinish}
             disabled={!selfHarm || !impact}
             className={`
-              w-full py-5 rounded-full text-lg font-semibold tracking-wide transition-smooth shadow-soft-md
+              responsive-action-btn w-full rounded-full text-lg font-semibold tracking-wide transition-smooth shadow-soft-md
               ${(!selfHarm || !impact)
                 ? 'bg-wellness-surface text-wellness-muted cursor-not-allowed'
                 : 'bg-gradient-calm text-white hover:shadow-soft-lg hover:-translate-y-1'
@@ -183,6 +184,7 @@ export const Assessment: React.FC<AssessmentProps> = ({ onSubmit }) => {
           </button>
         </div>
 
+      </div>
       </div>
     </div>
   );

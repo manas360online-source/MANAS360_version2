@@ -12,7 +12,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
 	if (!isAuthenticated) {
 		const redirectPath = `${location.pathname}${location.search}`;
-		return <Navigate to="/login" replace state={{ from: redirectPath }} />;
+		return <Navigate to="/auth/login" replace state={{ from: redirectPath }} />;
 	}
 
 	return <>{children}</>;

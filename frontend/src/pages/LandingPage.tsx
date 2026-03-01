@@ -119,24 +119,44 @@ export const LandingPage: React.FC = () => {
           })}
         </script>
         {/* Preload hero image for better LCP */}
-        <link rel="preload" as="image" href="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1000&auto=format&fit=crop" />
+        <link rel="preload" as="image" href="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1600&auto=format&fit=crop" />
       </Helmet>
 
       {/* Main Page Structure */}
-      <div className="relative overflow-x-hidden bg-cream text-charcoal">
+      <div className="relative min-h-screen overflow-x-hidden bg-[#f5f3ef] text-charcoal">
         <Header />
         <QuickAccessRail />
         <Hero />
 
-        <main className="mx-auto w-full max-w-6xl px-4 pb-32 pt-8 md:px-6 md:pt-10">
-          <TrustBar />
-          <HowItWorks />
-          <RoleSection />
-          <Testimonial
-            quote="I was so confused about what I was feeling. MANAS360 helped me understand it was anxiety, not weakness. My therapist has been incredible."
-            author="Priya"
-            location="Bangalore"
-          />
+        {/* Content sections with visual rhythm */}
+        <main>
+          {/* Trust bar — tight to hero for continuity */}
+          <section className="bg-cream px-4 pt-10 pb-2 sm:px-6 md:px-8 lg:px-12 xl:px-16">
+            <div className="mx-auto max-w-6xl">
+              <TrustBar />
+            </div>
+          </section>
+
+          {/* How It Works — white bg for contrast */}
+          <section className="bg-white px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
+            <div className="mx-auto max-w-6xl">
+              <HowItWorks />
+            </div>
+          </section>
+
+          {/* Role Section — subtle cream bg */}
+          <section className="bg-cream px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
+            <div className="mx-auto max-w-6xl">
+              <RoleSection />
+            </div>
+          </section>
+
+          {/* Testimonials — white bg */}
+          <section className="bg-white px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16">
+            <div className="mx-auto max-w-6xl">
+              <Testimonial />
+            </div>
+          </section>
         </main>
 
         <Footer />
