@@ -1,51 +1,106 @@
-import type { NextFunction, Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 import { env } from '../config/env';
 import { AppError } from './error.middleware';
-import { verifyAccessToken } from '../utils/jwt';
+import { ERROR_CODES, HTTP_STATUS } from '../utils/constants';
 
-const getBearerToken = (authorizationHeader?: string): string | null => {
-	if (!authorizationHeader || !authorizationHeader.startsWith('Bearer ')) {
-		return null;
-	}
+const prisma = new PrismaClient();
 
-	return authorizationHeader.slice(7);
-};
+interface JWTPayload {
+  userId: string;
+  email: string;
+  role: string;
+}
 
-export const requireAuth = (req: Request, _res: Response, next: NextFunction): void => {
-	const bearerToken = getBearerToken(req.headers.authorization);
-	const cookieToken = (req as Request & { cookies?: Record<string, string> }).cookies?.access_token;
-	const accessToken = bearerToken ?? cookieToken;
+// Extend Express Request type
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        role: string;
+      };
+    }
+  }
+}
 
-	if (!accessToken) {
-		next(new AppError('Authentication required', 401));
-		return;
-	}
+/**
+ * Authenticate user via JWT token
+ * Supports both Bearer token (mobile) and cookies (web)
+ */
+export async function authenticate(req: Request, res: Response, next: NextFunction) {
+  try {
+    let token: string | undefined;
 
-	try {
-		const payload = verifyAccessToken(accessToken);
+    // Extract token from Authorization header (Bearer token)
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith('Bearer ')) {
+      token = authHeader.substring(7);
+    }
 
-		req.auth = {
-			userId: payload.sub,
-			sessionId: payload.sessionId,
-			jti: payload.jti,
-		};
+    // Fallback to cookie (for web)
+    if (!token && req.cookies?.accessToken) {
+      token = req.cookies.accessToken;
+    }
 
-		next();
-	} catch {
-		next(new AppError('Invalid or expired access token', 401));
-	}
-};
+    if (!token) {
+      throw new AppError('No token provided', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.UNAUTHORIZED);
+    }
 
-export const requireCsrf = (req: Request, _res: Response, next: NextFunction): void => {
-	const csrfFromHeader = req.headers['x-csrf-token'];
-	const csrfToken = typeof csrfFromHeader === 'string' ? csrfFromHeader : undefined;
-	const cookieToken = (req as Request & { cookies?: Record<string, string> }).cookies?.[env.csrfCookieName];
+    // Verify JWT
+    let payload: JWTPayload;
+    try {
+      payload = jwt.verify(token, env.JWT_ACCESS_SECRET) as JWTPayload;
+    } catch (error: any) {
+      if (error.name === 'TokenExpiredError') {
+        throw new AppError('Token expired', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.TOKEN_EXPIRED);
+      }
+      throw new AppError('Invalid token', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.TOKEN_INVALID);
+    }
 
-	if (!csrfToken || !cookieToken || csrfToken !== cookieToken) {
-		next(new AppError('Invalid CSRF token', 403));
-		return;
-	}
+    // Verify user exists and is active
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isActive: true,
+      },
+    });
 
-	next();
-};
+    if (!user) {
+      throw new AppError('User not found', HTTP_STATUS.UNAUTHORIZED, ERROR_CODES.UNAUTHORIZED);
+    }
 
+    if (!user.isActive) {
+      throw new AppError('Account deactivated', HTTP_STATUS.FORBIDDEN, ERROR_CODES.FORBIDDEN);
+    }
+
+    // Attach user to request
+    req.user = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * Optional authentication
+ * Attaches user if token is valid, but doesn't reject if missing
+ */
+export async function optionalAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    await authenticate(req, res, () => {});
+  } catch (error) {
+    // Ignore auth errors, continue as unauthenticated
+  }
+  next();
+}

@@ -1,50 +1,44 @@
 import 'dotenv/config';
 import app from './app';
-import { connectDatabase, disconnectDatabase } from './config/db';
 import { env } from './config/env';
-import initSocket from './socket';
-import { startAnalyticsRollup } from './jobs/analyticsRollup.job';
+import { redis } from './config/redis';
+import { logger } from './utils/logger';
 
-const startServer = async (): Promise<void> => {
-	await connectDatabase();
+async function bootstrap() {
+  try {
+    // Connect to Redis
+    await redis.connect();
+    logger.info('✅ Redis connected');
 
-	const server = app.listen(env.port, () => {
-		console.log(`Server running on port ${env.port}`);
-	});
+    // Start server
+    const server = app.listen(env.PORT, () => {
+      logger.info(`✅ Server running on port ${env.PORT}`);
+      logger.info(`🌍 Environment: ${env.NODE_ENV}`);
+      logger.info(`🔒 CORS Origin: ${env.CORS_ORIGIN}`);
+    });
 
-	// initialize socket.io (non-blocking)
-	void initSocket(server).then(() => console.log('Socket server initialized')).catch((err) => console.error('Socket init failed', err));
+    // Graceful shutdown
+    const shutdown = async () => {
+      logger.info('🛑 Shutting down server...');
+      
+      server.close(() => {
+        logger.info('✅ Server closed');
+        process.exit(0);
+      });
 
-	// start analytics rollup job
-	void startAnalyticsRollup();
+      // Force close after 10 seconds
+      setTimeout(() => {
+        logger.error('❌ Forced shutdown');
+        process.exit(1);
+      }, 10000);
+    };
 
-	const shutdown = async (signal: string): Promise<void> => {
-		console.log(`${signal} received. Shutting down gracefully...`);
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+  } catch (error) {
+    logger.error('❌ Bootstrap failed', error);
+    process.exit(1);
+  }
+}
 
-		server.close(async () => {
-			await disconnectDatabase();
-			process.exit(0);
-		});
-	};
-
-	process.on('SIGINT', () => {
-		void shutdown('SIGINT');
-	});
-
-	process.on('SIGTERM', () => {
-		void shutdown('SIGTERM');
-	});
-
-	process.on('unhandledRejection', (reason) => {
-		console.error('Unhandled Rejection:', reason);
-	});
-
-	process.on('uncaughtException', async (error) => {
-		console.error('Uncaught Exception:', error);
-		await disconnectDatabase();
-		process.exit(1);
-	});
-};
-
-void startServer();
-
+bootstrap();
