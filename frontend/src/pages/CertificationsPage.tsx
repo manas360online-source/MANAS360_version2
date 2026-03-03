@@ -180,10 +180,10 @@ export default function CertificationsPage() {
 						</div>
 						</div>
 
-						<div className="mt-1.5 flex items-center justify-between gap-3 border-t border-calm-sage/20 pt-1.5">
-							<div className="flex min-w-0 items-center gap-2 text-xs text-cream/80 sm:text-sm">
-								<p className="shrink-0 font-semibold text-cream">Plan your certification pathway</p>
-								<p className="truncate text-cream/70">Compare options and complete enrollment in a few steps.</p>
+						<div className="mt-1.5 flex items-center justify-between gap-2 border-t border-calm-sage/20 pt-1.5 sm:gap-3">
+							<div className="min-w-0 text-xs text-cream/80 sm:flex sm:items-center sm:gap-2 sm:text-sm">
+								<p className="truncate font-semibold text-cream">Plan your certification pathway</p>
+								<p className="hidden text-[11px] text-cream/70 sm:block sm:truncate sm:text-sm">Compare options and complete enrollment in a few steps.</p>
 							</div>
 							<div className="flex shrink-0 items-center gap-1.5">
 								<button
@@ -212,7 +212,7 @@ export default function CertificationsPage() {
 				</div>
 			</header>
 
-			<div className="responsive-container pt-36 pb-6 sm:pt-40 sm:pb-10">
+			<div className="responsive-container pt-44 pb-6 sm:pt-40 sm:pb-10">
 				<div className="mx-auto max-w-6xl space-y-10">
 					<section className="rounded-3xl border border-calm-sage/20 bg-white p-6 shadow-soft-sm sm:p-8">
 						<h1 className="font-serif text-3xl font-light text-charcoal sm:text-4xl">Your Certification Journey</h1>
