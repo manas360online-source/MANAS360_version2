@@ -37,7 +37,8 @@ export const patientApi = {
     (await http.get(`/patient/invoices/${encodeURIComponent(id)}/download`, { responseType: 'blob' })).data,
   getExercises: async () => (await http.get('/patient/exercises')).data,
   completeExercise: async (id: string) => (await http.patch(`/patient/exercises/${encodeURIComponent(id)}/complete`)).data,
-  aiChat: async (payload: { message: string }) => (await http.post('/v1/ai/chat', payload)).data,
+  aiChat: async (payload: { message: string; bot_type?: 'mood_ai' | 'clinical_ai' }) =>
+    (await http.post('/chat/message', { message: payload.message, bot_type: payload.bot_type || 'mood_ai' })).data,
   getNotifications: async () => (await http.get('/v1/notifications')).data,
   markNotificationRead: async (id: string) => (await http.patch(`/v1/notifications/${encodeURIComponent(id)}/read`)).data,
 };

@@ -15,6 +15,7 @@ import patientV1Routes from './patient-v1.routes';
 import patientSelfRoutes from './patient-self.routes';
 import certificationRoutes from './certification.routes';
 import landingRoutes from './landing.routes';
+import chatRoutes from './chat.routes';
 
 const router = Router();
 
@@ -47,6 +48,7 @@ router.use('/v1/certifications', certificationRoutes);
 router.use('/landing', landingRoutes);
 router.use('/v1/landing', landingRoutes);
 router.use('/webhooks', webhookRoutes);
+router.use('/chat', chatRoutes);
 
 export default router;
 

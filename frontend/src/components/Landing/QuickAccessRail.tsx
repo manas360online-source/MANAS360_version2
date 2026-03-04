@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 type QuickItem = {
   key: string;
@@ -6,6 +7,7 @@ type QuickItem = {
   label: string;
   subtitle: string;
   ariaLabel: string;
+  route?: string;
   badge?: string;
   tone?: 'purple' | 'rose' | 'teal' | 'orange' | 'blue' | 'green' | 'gold';
 };
@@ -28,6 +30,7 @@ const quickGroups: { title: string; items: QuickItem[] }[] = [
         label: 'Dr. Meera AI',
         subtitle: 'AR therapy guide, 24/7 available',
         ariaLabel: 'Dr. Meera quick access',
+        route: '/ai-chat',
         badge: 'AI',
         tone: 'rose',
       },
@@ -113,6 +116,8 @@ const toneClassMap: Record<NonNullable<QuickItem['tone']>, string> = {
 };
 
 export const QuickAccessRail: React.FC = () => {
+  const navigate = useNavigate();
+
   return (
     <aside
       className="fixed left-0 top-1/2 z-[60] hidden -translate-y-1/2 md:block"
@@ -129,6 +134,9 @@ export const QuickAccessRail: React.FC = () => {
               <button
                 key={item.key}
                 type="button"
+                onClick={() => {
+                  if (item.route) navigate(item.route);
+                }}
                 className="relative inline-flex min-h-[42px] w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-charcoal transition duration-200 hover:bg-white/70"
                 aria-label={item.ariaLabel}
                 title={item.label}

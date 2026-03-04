@@ -1,95 +1,103 @@
-import { useEffect, useMemo, useState } from 'react';
-import { therapistApi, type TherapistMessageItem } from '../../api/therapist.api';
+import { useState } from 'react';
+import { CHAT_FALLBACK_MESSAGE, chatApi } from '../../api/chat.api';
 import TherapistBadge from '../../components/therapist/dashboard/TherapistBadge';
 import TherapistCard from '../../components/therapist/dashboard/TherapistCard';
 import {
-  TherapistEmptyState,
   TherapistErrorState,
-  TherapistLoadingState,
 } from '../../components/therapist/dashboard/TherapistDataState';
 import TherapistPageShell from '../../components/therapist/dashboard/TherapistPageShell';
 
-const formatTime = (value: string): string =>
-  new Date(value).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-
 export default function TherapistMessagesPage() {
-  const [rows, setRows] = useState<TherapistMessageItem[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [thread, setThread] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [botName, setBotName] = useState('dr meera · Clinical Assistant AI');
 
-  const loadMessages = async () => {
+  const send = async () => {
+    const message = input.trim();
+    if (!message || loading) return;
+
+    setThread((prev) => [...prev, { role: 'user', content: message }]);
+    setInput('');
     setLoading(true);
     setError(null);
     try {
-      const res = await therapistApi.getMessages();
-      setRows(res.items || []);
-      setUnreadCount(res.unreadCount || 0);
-      setSelectedId((current) => current || res.items?.[0]?.id || null);
+      const res = await chatApi.sendMessage({ message, bot_type: 'clinical_ai' });
+      const payload: any = (res as any)?.data ?? res;
+      setBotName(`${payload?.bot_name || 'dr meera'} · Clinical Assistant AI`);
+      const messages = Array.isArray(payload?.messages) ? payload.messages : [];
+      if (!messages.length) {
+        setThread((prev) => [...prev, { role: 'assistant', content: String(payload?.response || CHAT_FALLBACK_MESSAGE) }]);
+      } else {
+        setThread(messages.map((m: any) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '') })));
+      }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load messages';
-      setError(message);
+      setError(err instanceof Error ? err.message : 'Failed to load messages');
+      setThread((prev) => [...prev, { role: 'assistant', content: CHAT_FALLBACK_MESSAGE }]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    void loadMessages();
-  }, []);
-
-  const selected = useMemo(() => rows.find((item) => item.id === selectedId) || null, [rows, selectedId]);
-
   return (
-    <TherapistPageShell title="Messages" subtitle="Stay connected with your patients and follow-up promptly.">
-      {loading ? (
-        <TherapistLoadingState title="Loading messages" description="Fetching your latest notifications and conversations." />
-      ) : error ? (
-        <TherapistErrorState title="Could not load messages" description={error} onRetry={() => void loadMessages()} />
-      ) : rows.length === 0 ? (
-        <TherapistEmptyState title="No messages yet" description="New patient and platform messages will appear here." />
-      ) : (
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
-          <TherapistCard className="overflow-hidden">
-            <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
-              <h3 className="font-display text-sm font-bold text-ink-800">Conversations</h3>
-              <TherapistBadge variant={unreadCount > 0 ? 'danger' : 'default'} label={`${unreadCount} unread`} />
-            </div>
-            <div className="divide-y divide-ink-100/60">
-              {rows.map((chat) => (
-                <button
-                  key={chat.id}
-                  onClick={() => setSelectedId(chat.id)}
-                  className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-bg ${selectedId === chat.id ? 'bg-sage-50/30' : ''}`}
-                >
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sage-50 font-display text-xs font-bold text-sage-500">
-                    {chat.title.slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-ink-800">{chat.title}</span>
-                    <span className="block truncate text-xs text-ink-500">{chat.text}</span>
-                  </span>
-                  <span className="text-[10px] text-ink-500">{formatTime(chat.createdAt)}</span>
-                </button>
-              ))}
-            </div>
-          </TherapistCard>
+    <TherapistPageShell title="Clinical Assistant" subtitle="Dr Meera helps with clinical workflow and platform guidance.">
+      {error ? (
+        <TherapistErrorState title="Could not load assistant" description={error} onRetry={() => setError(null)} />
+      ) : null}
+      <TherapistCard className="overflow-hidden">
+        <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
+          <h3 className="font-display text-sm font-bold text-ink-800">{botName}</h3>
+          <TherapistBadge variant="sage" label="Live" />
+        </div>
 
-          <TherapistCard className="flex min-h-[420px] flex-col">
-            <div className="flex items-center justify-between border-b border-ink-100 px-4 py-3">
-              <h3 className="font-display text-sm font-bold text-ink-800">{selected?.title || 'Conversation'}</h3>
-              <TherapistBadge variant={selected?.isRead ? 'default' : 'sage'} label={selected?.isRead ? 'Read' : 'Unread'} />
+        <div className="min-h-[360px] space-y-3 bg-surface-bg px-4 py-4">
+          {thread.length === 0 ? (
+            <p className="text-sm text-ink-500">Ask about patient insights, clinical workflow, or platform operations.</p>
+          ) : null}
+          {thread.map((row, index) => (
+            <div
+              key={`${row.role}-${index}`}
+              className={`flex max-w-[90%] items-start gap-2 rounded-xl px-3 py-2 text-sm ${
+                row.role === 'assistant'
+                  ? 'bg-surface-card text-ink-800 shadow-soft-xs'
+                  : 'ml-auto bg-sage-500 text-white'
+              }`}
+            >
+              {row.role === 'assistant' ? (
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sage-500 text-[10px] font-semibold text-white">DM</span>
+              ) : null}
+              <span>{row.content}</span>
             </div>
+          ))}
+          {loading ? <p className="text-xs text-ink-500">dr meera is typing…</p> : null}
+        </div>
 
-            <div className="flex-1 space-y-3 bg-surface-bg px-4 py-4">
-              <div className="max-w-[90%] rounded-xl bg-surface-card px-3 py-2 text-sm text-ink-800 shadow-soft-xs">
-                {selected?.text || 'Select a message to view details.'}
-              </div>
-            </div>
-          </TherapistCard>
-        </section>
-      )}
+        <div className="border-t border-ink-100 px-4 py-3">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="text"
+              placeholder="Ask Dr Meera about workflow or clinical insights..."
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  void send();
+                }
+              }}
+              className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-800 placeholder:text-ink-500 focus:border-sage-500 focus:ring-0"
+            />
+            <button
+              onClick={() => void send()}
+              disabled={loading}
+              className="inline-flex min-h-[40px] items-center justify-center rounded-lg bg-sage-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sage-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </TherapistCard>
     </TherapistPageShell>
   );
 }

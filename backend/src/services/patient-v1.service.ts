@@ -4,6 +4,7 @@ import { AppError } from '../middleware/error.middleware';
 import { decryptSessionNote } from '../utils/encryption';
 import { createSessionPayment } from './payment.service';
 import { verifyRazorpayPaymentSignature } from './razorpay.service';
+import { processChatMessage } from './chat.service';
 
 const db = prisma as any;
 
@@ -881,57 +882,18 @@ export const getMoodHistory = async (userId: string) => {
 	return rows.map((r: any) => ({ id: r.id, mood: r.moodScore, note: r.note, created_at: r.createdAt }));
 };
 
-const generateFallbackAiReply = (message: string): string => {
-	const text = message.trim();
-	if (!text) return 'I am here with you. Tell me how you are feeling right now.';
-	return `I hear you: "${text}". Let's take one small step now — slow breathing for 60 seconds and then share what changed.`;
-};
-
-const callOpenAIIfConfigured = async (message: string, context: Array<{ role: 'user' | 'assistant'; content: string }>) => {
-	const apiKey = process.env.OPENAI_API_KEY;
-	if (!apiKey) return null;
-
-	const response = await fetch('https://api.openai.com/v1/chat/completions', {
-		method: 'POST',
-		headers: {
-			Authorization: `Bearer ${apiKey}`,
-			'Content-Type': 'application/json',
-		},
-		body: JSON.stringify({
-			model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-			temperature: 0.4,
-			messages: [
-				{ role: 'system', content: 'You are a supportive mental wellness assistant. Keep responses safe, concise, and non-diagnostic.' },
-				...context,
-				{ role: 'user', content: message },
-			],
-		}),
-	});
-
-	if (!response.ok) return null;
-	const body = (await response.json()) as any;
-	return body?.choices?.[0]?.message?.content ? String(body.choices[0].message.content) : null;
-};
-
 export const chatWithAi = async (userId: string, input: { message: string }) => {
 	const message = String(input.message || '').trim();
 	if (!message) throw new AppError('message is required', 422);
-
-	const latest = await db.aiConversation.findFirst({ where: { userId }, orderBy: { createdAt: 'desc' } });
-	const previousMessages = Array.isArray(latest?.messages) ? latest.messages : [];
-	const context = previousMessages
-		.slice(-10)
-		.map((m: any) => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: String(m.content || '') }))
-		.filter((m: any) => m.content);
-
-	const aiReply = (await callOpenAIIfConfigured(message, context)) || generateFallbackAiReply(message);
-	const updatedMessages = [...previousMessages, { role: 'user', content: message, at: new Date().toISOString() }, { role: 'assistant', content: aiReply, at: new Date().toISOString() }];
-
-	const convo = latest
-		? await db.aiConversation.update({ where: { id: latest.id }, data: { messages: updatedMessages } })
-		: await db.aiConversation.create({ data: { userId, messages: updatedMessages } });
-
-	return { conversation_id: convo.id, response: aiReply, messages: updatedMessages };
+	const result = await processChatMessage({ userId, message, botType: 'mood_ai' });
+	return {
+		conversation_id: result.conversation_id,
+		response: result.response,
+		messages: result.messages,
+		bot_name: result.bot_name,
+		bot_type: result.bot_type,
+		crisis_detected: result.crisis_detected,
+	};
 };
 
 export const listNotifications = async (userId: string) => {

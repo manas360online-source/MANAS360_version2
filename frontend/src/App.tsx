@@ -40,6 +40,7 @@ import AdminVerificationPage from './pages/admin/Verification'
 import AdminSubscriptionsPage from './pages/admin/Subscriptions'
 import AdminRevenuePage from './pages/admin/Revenue'
 import AdminSettingsPage from './pages/admin/Settings'
+import ClinicalAssistantPage from './pages/admin/ClinicalAssistantPage'
 import CertificationsPage from './pages/CertificationsPage'
 import TherapistDashboardPage from './pages/therapist/TherapistDashboardPage'
 import TherapistPatientsPage from './pages/therapist/TherapistPatientsPage'
@@ -145,6 +146,7 @@ function App() {
           <Route path="verification" element={<AdminVerificationPage />} />
           <Route path="subscriptions" element={<AdminSubscriptionsPage />} />
           <Route path="revenue" element={<AdminRevenuePage />} />
+          <Route path="clinical-assistant" element={<ClinicalAssistantPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
           <Route path="dashboard" element={<Navigate to="/admin/analytics" replace />} />
         </Route>

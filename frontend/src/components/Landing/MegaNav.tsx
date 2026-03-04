@@ -34,9 +34,9 @@ const tabs: TabConfig[] = [
   {
     label: 'AI & Self-Help',
     items: [
-      { icon: '🤖', title: 'AI Room', description: 'Private AI-led support space', route: '/ai-room' },
-      { icon: '🧕', title: 'Dr Meera AI', description: 'Guidance from Dr Meera AI', route: '/dr-meera' },
-      { icon: '💬', title: 'Anytime Buddy', description: '24/7 companion support', route: '/buddy' },
+      { icon: '🤖', title: 'AI Room', description: 'Private AI-led support space', route: '/ai-chat' },
+      { icon: '🧕', title: 'Dr Meera AI', description: 'Guidance from Dr Meera AI', route: '/ai-chat' },
+      { icon: '💬', title: 'Anytime Buddy', description: '24/7 companion support', route: '/ai-chat' },
       { icon: '🫧', title: 'Vent Buddy', description: 'A safe place to express feelings', route: '/vent' },
       { icon: '📞', title: 'Call & Talk', description: 'Voice support when needed', route: '/call' },
       { icon: '🎵', title: 'Sound Therapy', description: 'Calm sound-based relaxation', route: '/sound' },

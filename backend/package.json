@@ -14,6 +14,7 @@
 		"migration:generate": "./scripts/generate_incremental_migration.sh",
 		"migration:apply": "./scripts/apply_migration.sh",
 		"test": "jest --runInBand",
+		"test:chat": "jest --runInBand chat.integration.test.ts chat-route.integration.test.ts",
 		"backfill:versions": "ts-node ./scripts/backfill_versions.ts",
 		"seed:templates": "ts-node ./scripts/seed_default_templates.ts",
 				"seed:login-users": "node ./scripts/seed-login-users.js",

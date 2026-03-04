@@ -111,6 +111,7 @@ model User {
   authSessions              AuthSession[]
   authAuditLogs             AuthAuditLog[]
   aiConversations           AIConversation[]
+  chatMessages              ChatMessage[]
   notifications             Notification[]
   bookingIntentsAsPatient   SessionBookingIntent[] @relation("BookingIntentPatient")
   bookingIntentsAsProvider  SessionBookingIntent[] @relation("BookingIntentProvider")
@@ -582,6 +583,21 @@ model AIConversation {
 
   @@index([userId, createdAt])
   @@map("ai_conversations")
+}
+
+model ChatMessage {
+  messageId String   @id @default(uuid()) @map("message_id")
+  userId    String   @map("user_id")
+  role      String
+  content   String
+  timestamp DateTime @default(now())
+  botType   String   @map("bot_type")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, botType, timestamp(sort: Desc)], map: "chat_messages_user_bot_ts_idx")
+  @@index([userId, timestamp(sort: Desc)], map: "chat_messages_user_ts_idx")
+  @@map("chat_messages")
 }
 
 model Notification {

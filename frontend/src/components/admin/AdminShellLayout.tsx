@@ -7,6 +7,7 @@ const navItems = [
 	{ to: '/admin/verification', label: 'Verification' },
 	{ to: '/admin/subscriptions', label: 'Subscriptions' },
 	{ to: '/admin/revenue', label: 'Revenue' },
+	{ to: '/admin/clinical-assistant', label: 'Clinical Assistant' },
 	{ to: '/admin/settings', label: 'Settings' },
 ];
 

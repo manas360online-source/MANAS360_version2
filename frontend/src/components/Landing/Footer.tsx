@@ -14,7 +14,7 @@ export const Footer: React.FC = () => {
     Platform: [
       { label: 'How It Works', to: '/#how' },
       { label: 'Find a Therapist', to: '/therapists' },
-      { label: 'AI Room', to: '/ai-room' },
+      { label: 'AI Room', to: '/ai-chat' },
       { label: 'Pricing', to: '/pricing' },
     ],
     Company: [
