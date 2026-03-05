@@ -138,7 +138,7 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-6 pb-20 lg:pb-6">
-      <section className="rounded-2xl border border-calm-sage/20 bg-white/95 p-4 shadow-soft-sm sm:p-5">
+      <section className="rounded-2xl border border-ink-100 bg-white p-4 shadow-soft-sm sm:p-5">
         <p className="text-xs text-charcoal/55 sm:text-sm">{todayLabel}</p>
         <h1 className="mt-1 font-serif text-2xl font-semibold text-charcoal sm:text-3xl">Good day, {userName}</h1>
         <p className="mt-1 text-sm text-charcoal/70">How are you feeling today?</p>
@@ -167,28 +167,35 @@ export default function DashboardPage() {
           >
             {savingMood ? 'Saving...' : 'Save check-in'}
           </button>
+
+          <Link
+            to="/patient/mood"
+            className="inline-flex min-h-[40px] items-center rounded-xl border border-calm-sage/20 bg-white px-4 text-sm font-medium text-charcoal transition hover:bg-calm-sage/10"
+          >
+            Open Mood Tracker
+          </Link>
         </div>
       </section>
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <article className="h-full rounded-2xl border border-calm-sage/20 bg-white/95 p-4 shadow-soft-sm">
+        <article className="h-full rounded-2xl border border-ink-100 bg-white p-4 shadow-soft-sm">
           <p className="text-xs uppercase tracking-wider text-charcoal/50">Wellness Score</p>
           <p className="mt-2 text-3xl font-semibold text-calm-sage">{dashboard?.wellnessScore ?? 0}</p>
         </article>
 
-        <article className="h-full rounded-2xl border border-calm-sage/20 bg-white/95 p-4 shadow-soft-sm">
+        <article className="h-full rounded-2xl border border-ink-100 bg-white p-4 shadow-soft-sm">
           <p className="text-xs uppercase tracking-wider text-charcoal/50">Sessions Done</p>
           <p className="mt-2 text-3xl font-semibold text-charcoal">{dashboard?.sessionsCompleted ?? 0}</p>
           <p className="text-xs text-charcoal/55">of {dashboard?.totalSessions ?? 0} planned</p>
         </article>
 
-        <article className="h-full rounded-2xl border border-calm-sage/20 bg-white/95 p-4 shadow-soft-sm">
+        <article className="h-full rounded-2xl border border-ink-100 bg-white p-4 shadow-soft-sm">
           <p className="text-xs uppercase tracking-wider text-charcoal/50">Streak</p>
           <p className="mt-2 text-3xl font-semibold text-charcoal">{dashboard?.streak ?? 0}</p>
           <p className="text-xs text-charcoal/55">days of mood tracking</p>
         </article>
 
-        <article className="h-full rounded-2xl border border-calm-sage/20 bg-white/95 p-4 shadow-soft-sm">
+        <article className="h-full rounded-2xl border border-ink-100 bg-white p-4 shadow-soft-sm">
           <p className="text-xs uppercase tracking-wider text-charcoal/50">Exercises</p>
           <p className="mt-2 text-3xl font-semibold text-charcoal">{dashboard?.progress?.exercisesCompleted ?? 0}</p>
           <p className="text-xs text-charcoal/55">of {dashboard?.progress?.totalExercises ?? 0} completed</p>
@@ -197,22 +204,24 @@ export default function DashboardPage() {
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <article className="relative overflow-hidden rounded-2xl bg-gradient-calm p-4 text-white shadow-soft-md sm:p-6">
+          <article className="relative overflow-hidden rounded-2xl bg-sage-700 p-4 text-white shadow-soft-md sm:p-6">
+            <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/5" />
+            <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-white/5" />
             <div className="relative z-10">
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-medium">Next Session</span>
+                <span className="rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-medium text-white">Next Session</span>
                 {upcomingSession?.scheduledAt && (
-                  <span className="text-[11px] text-white/80">{formatDateTime(upcomingSession.scheduledAt)}</span>
+                  <span className="text-[11px] text-white/70">{formatDateTime(upcomingSession.scheduledAt)}</span>
                 )}
               </div>
 
               {!upcomingSession ? (
-                <p className="text-sm text-white/85">No upcoming session booked yet.</p>
+                <p className="text-sm text-white/90">No upcoming session booked yet.</p>
               ) : (
                 <div className="space-y-2">
-                  <h2 className="font-serif text-lg font-semibold sm:text-xl">{upcomingSession?.provider?.name || 'Assigned Therapist'}</h2>
+                  <h2 className="font-display text-lg font-semibold text-white sm:text-xl">{upcomingSession?.provider?.name || 'Assigned Therapist'}</h2>
                   <p className="text-sm text-white/85">Session status: {upcomingSession.status || 'scheduled'}</p>
-                  <Link to="/patient/sessions" className="inline-flex min-h-[42px] items-center rounded-xl bg-white px-4 text-sm font-semibold text-charcoal">
+                  <Link to="/patient/sessions" className="inline-flex min-h-[42px] items-center rounded-xl bg-white px-4 text-sm font-semibold text-sage-700 hover:bg-sage-50">
                     View Session Details
                   </Link>
                 </div>
@@ -220,10 +229,13 @@ export default function DashboardPage() {
             </div>
           </article>
 
-          <article className="rounded-2xl border border-calm-sage/20 bg-white/95 p-4 shadow-soft-sm sm:p-5">
+          <article className="rounded-2xl border border-ink-100 bg-white p-4 shadow-soft-sm sm:p-5">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-base font-semibold text-charcoal">Mood Trend</h2>
-              <span className="text-xs font-medium text-calm-sage">Average: {avgMood || '—'} / 5</span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-medium text-calm-sage">Average: {avgMood || '—'} / 5</span>
+                <Link to="/patient/progress" className="text-xs font-medium text-calm-sage hover:underline">View Progress →</Link>
+              </div>
             </div>
 
             <div className="h-44">
@@ -242,7 +254,7 @@ export default function DashboardPage() {
             </div>
           </article>
 
-          <article className="overflow-hidden rounded-2xl border border-calm-sage/20 bg-white/95 shadow-soft-sm">
+          <article className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-soft-sm">
             <div className="flex items-center justify-between border-b border-calm-sage/15 px-4 py-3 sm:px-5 sm:py-4">
               <h2 className="text-base font-semibold text-charcoal">Recent Sessions</h2>
               <Link to="/patient/sessions" className="text-xs font-medium text-calm-sage hover:underline">
@@ -265,7 +277,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-6">
-          <article className="overflow-hidden rounded-2xl border border-calm-sage/20 bg-white/95 shadow-soft-sm">
+          <article className="overflow-hidden rounded-2xl border border-ink-100 bg-white shadow-soft-sm">
             <div className="flex items-center justify-between border-b border-calm-sage/15 px-5 py-4">
               <h2 className="text-base font-semibold text-charcoal">Exercises</h2>
               <span className="rounded-full bg-calm-sage/10 px-2 py-0.5 text-[11px] font-medium text-charcoal">
@@ -295,24 +307,24 @@ export default function DashboardPage() {
             </div>
           </article>
 
-          <article className="rounded-2xl bg-gradient-calm p-5 text-white shadow-soft-md">
-            <p className="text-sm font-semibold">{subscription?.planName || 'Subscription Plan'}</p>
+          <article className="rounded-2xl bg-gradient-to-br from-sage-700 to-sage-800 p-5 text-white shadow-soft-md">
+            <p className="text-sm font-semibold text-white">{subscription?.planName || 'Subscription Plan'}</p>
             <p className="mt-1 text-xs text-white/80">
               ₹{subscription?.price || 0}/{String(subscription?.billingCycle || 'monthly').toLowerCase()} · Renews {formatDate(subscription?.renewalDate)}
             </p>
-            <p className="mt-2 text-xs text-white/80">Status: {subscription?.status || 'active'} · Auto-renew: {subscription?.autoRenew ? 'On' : 'Off'}</p>
-            <Link to="/patient/billing" className="mt-3 inline-flex rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-charcoal">
+            <p className="mt-2 text-xs text-white/85">Status: {subscription?.status || 'active'} · Auto-renew: {subscription?.autoRenew ? 'On' : 'Off'}</p>
+            <Link to="/patient/billing" className="mt-3 inline-flex rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-sage-700 hover:bg-sage-50">
               Manage Subscription
             </Link>
           </article>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-calm-sage/20 bg-white/95 p-5 shadow-soft-sm">
+      <section className="rounded-2xl border border-ink-100 bg-white p-5 shadow-soft-sm">
         <h2 className="text-base font-semibold text-charcoal">Recent Activity</h2>
         <div className="mt-4 space-y-4">
-          {recentActivity.map((item: any) => (
-            <div key={item.id} className="flex items-start gap-3 sm:gap-4">
+          {recentActivity.map((item: any, index: number) => (
+            <div key={`${item.id || `activity-${item.type || 'item'}-${item.date || index}`}-${index}`} className="flex items-start gap-3 sm:gap-4">
               <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-cream text-sm">•</div>
               <div className="min-w-0">
                 <p className="text-sm leading-relaxed text-charcoal">{item.title}</p>

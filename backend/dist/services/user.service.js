@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.restoreDeletedUserAccount = exports.invalidateMySession = exports.listMyActiveSessions = exports.changeMyPassword = exports.uploadMyProfilePhoto = exports.softDeleteMyAccount = exports.updateMyProfile = exports.getMyProfile = void 0;
+exports.restoreDeletedUserAccount = exports.invalidateAllMySessions = exports.invalidateMySession = exports.listMyActiveSessions = exports.changeMyPassword = exports.uploadMyProfilePhoto = exports.softDeleteMyAccount = exports.updateMyProfile = exports.getMyProfile = void 0;
 const db_1 = require("../config/db");
 const error_middleware_1 = require("../middleware/error.middleware");
 const s3_service_1 = require("./s3.service");
@@ -28,6 +28,7 @@ const getMyProfile = async (userId) => {
             name: true,
             email: true,
             phone: true,
+            showNameToProviders: true,
             role: true,
             provider: true,
             emailVerified: true,
@@ -70,6 +71,9 @@ const updateMyProfile = async (userId, payload) => {
         }
         updatePayload.phone = payload.phone;
     }
+    if (payload.showNameToProviders !== undefined) {
+        updatePayload.showNameToProviders = payload.showNameToProviders;
+    }
     if (Object.keys(updatePayload).length === 0) {
         throw new error_middleware_1.AppError('No allowed fields provided for update', 400);
     }
@@ -87,6 +91,9 @@ const updateMyProfile = async (userId, payload) => {
                 }
                 : {}),
             ...(updatePayload.phone !== undefined ? { phone: updatePayload.phone } : {}),
+            ...(updatePayload.showNameToProviders !== undefined
+                ? { showNameToProviders: updatePayload.showNameToProviders }
+                : {}),
         },
     });
     if (updatedUser.count === 0) {
@@ -216,6 +223,19 @@ const invalidateMySession = async (userId, sessionId) => {
     await db.authSession.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
 };
 exports.invalidateMySession = invalidateMySession;
+const invalidateAllMySessions = async (userId) => {
+    await assertUserIsActive(userId);
+    const result = await db.authSession.updateMany({
+        where: {
+            userId,
+            revokedAt: null,
+            expiresAt: { gt: new Date() },
+        },
+        data: { revokedAt: new Date() },
+    });
+    return { revokedCount: Number(result.count || 0) };
+};
+exports.invalidateAllMySessions = invalidateAllMySessions;
 const restoreDeletedUserAccount = async (userId) => {
     const restored = await db.user.updateMany({
         where: { id: userId, isDeleted: true },

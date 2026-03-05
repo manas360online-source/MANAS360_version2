@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteMySessionController = exports.getMySessionsController = exports.patchMePasswordController = exports.uploadMePhotoController = exports.deleteMeController = exports.patchMeController = exports.getMeController = void 0;
+exports.deleteMySessionsController = exports.deleteMySessionController = exports.getMySessionsController = exports.patchMePasswordController = exports.uploadMePhotoController = exports.deleteMeController = exports.patchMeController = exports.getMeController = void 0;
 const error_middleware_1 = require("../middleware/error.middleware");
 const user_service_1 = require("../services/user.service");
 const response_1 = require("../utils/response");
@@ -67,3 +67,9 @@ const deleteMySessionController = async (req, res) => {
     (0, response_1.sendSuccess)(res, null, 'Session invalidated successfully');
 };
 exports.deleteMySessionController = deleteMySessionController;
+const deleteMySessionsController = async (req, res) => {
+    const userId = getAuthUserId(req);
+    const result = await (0, user_service_1.invalidateAllMySessions)(userId);
+    (0, response_1.sendSuccess)(res, result, 'All sessions invalidated successfully');
+};
+exports.deleteMySessionsController = deleteMySessionsController;

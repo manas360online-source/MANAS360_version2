@@ -1,0 +1,14 @@
+ALTER TABLE "mood_predictions"
+  ADD COLUMN IF NOT EXISTS "batch_date" TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS "day1_predicted" DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS "day2_predicted" DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS "day3_predicted" DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS "day4_predicted" DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS "day5_predicted" DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS "day6_predicted" DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS "day7_predicted" DOUBLE PRECISION,
+  ADD COLUMN IF NOT EXISTS "influencing_factors" JSONB,
+  ADD COLUMN IF NOT EXISTS "accuracy_within_2_pct" DOUBLE PRECISION;
+
+CREATE INDEX IF NOT EXISTS "mood_predictions_user_batch_idx"
+  ON "mood_predictions" ("user_id", "batch_date" DESC);

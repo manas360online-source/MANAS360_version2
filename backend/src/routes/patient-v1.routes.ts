@@ -11,6 +11,9 @@ import {
 	downloadPatientInvoiceController,
 	downgradePatientSubscriptionController,
 	getPatientExercisesController,
+	getPatientMoodStatsController,
+	getPatientMoodTodayController,
+	getPatientProgressController,
 	getPatientDashboardController,
 	getPatientInvoicesController,
 	getPatientMoodController,
@@ -54,6 +57,10 @@ router.post('/assessments/submit', requireAuth, requireRole('patient'), asyncHan
 
 router.post('/mood', requireAuth, requireRole('patient'), asyncHandler(createMoodController));
 router.get('/mood/history', requireAuth, requireRole('patient'), asyncHandler(moodHistoryController));
+router.get('/mood/today', requireAuth, requireRole('patient'), asyncHandler(getPatientMoodTodayController));
+router.get('/mood/stats', requireAuth, requireRole('patient'), asyncHandler(getPatientMoodStatsController));
+
+router.get('/patient/progress', requireAuth, requireRole('patient'), asyncHandler(getPatientProgressController));
 
 router.post('/ai/chat', requireAuth, requireRole('patient'), asyncHandler(aiChatController));
 

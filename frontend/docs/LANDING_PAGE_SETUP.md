@@ -174,7 +174,7 @@ frontend/
 Create a `.env` file in the frontend root:
 
 ```env
-VITE_API_BASE_URL=http://localhost:3000/api/v1
+VITE_API_BASE_URL=http://localhost:5000/api/v1
 VITE_ASSESSMENT_URL=/assessment
 VITE_CRISIS_NUMBER=1800-599-0019
 ```

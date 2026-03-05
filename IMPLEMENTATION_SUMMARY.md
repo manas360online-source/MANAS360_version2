@@ -220,7 +220,7 @@ npx prisma generate
 ### Step 3: Test Endpoints
 ```bash
 # Create template
-curl -X POST http://localhost:3000/api/v1/cbt-sessions/templates \
+curl -X POST http://localhost:5000/api/v1/cbt-sessions/templates \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"title":"..."}'

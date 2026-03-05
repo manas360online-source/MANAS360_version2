@@ -6,6 +6,8 @@ import {
 	getCrisisSupportResponse,
 	triggerCrisisEscalation,
 } from './crisisEscalation.service';
+import { analyzeChatCrisis, persistChatAnalysis } from './chatCrisisDetector';
+import { recomputeCompositeRisk } from './compositeRisk';
 
 const db = prisma as any;
 
@@ -125,6 +127,33 @@ const persistChatMessages = async (userId: string, entries: ConversationMessage[
 	}
 };
 
+const runAsyncChatCrisisPipeline = (input: { userId: string; botType: BotType; message: string }): void => {
+	if (process.env.NODE_ENV === 'test') return;
+
+	setTimeout(() => {
+		void (async () => {
+			try {
+				const analysis = await analyzeChatCrisis(input.message);
+				await persistChatAnalysis({
+					userId: input.userId,
+					botType: input.botType,
+					message: input.message,
+					analysis,
+				});
+
+				if (['HIGH', 'CRITICAL'].includes(String(analysis.urgency_level).toUpperCase())) {
+					await recomputeCompositeRisk({ userId: input.userId, source: 'chat_urgency_trigger' });
+				}
+			} catch (error) {
+				console.error('[chat] async_crisis_pipeline_failed', {
+					userId: input.userId,
+					error: String(error),
+				});
+			}
+		})();
+	}, 0);
+};
+
 const upsertConversationMessages = async (
 	userId: string,
 	botType: BotType,
@@ -177,6 +206,10 @@ export const processChatMessage = async (input: {
 	const botType = input.botType;
 	const userRole = resolveUserRole(String(user.role || 'patient'));
 	assertBotPermission(userRole, botType);
+
+	if (botType === 'mood_ai' && userRole === 'patient') {
+		runAsyncChatCrisisPipeline({ userId: input.userId, botType, message });
+	}
 
 	const latest = await db.aIConversation.findFirst({ where: { userId: input.userId }, orderBy: { createdAt: 'desc' } });
 	const storedContext = await getLastChatMessages(input.userId, botType);

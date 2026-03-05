@@ -64,7 +64,7 @@ npm run dev
 
 ### Verify Installation
 ```bash
-curl http://localhost:3000/api/health
+curl http://localhost:5000/api/health
 # Response: { "ok": true, "service": "manas360-backend" }
 ```
 
@@ -112,7 +112,7 @@ Error Handling & Logging
 
 ### Base URL
 ```
-http://localhost:3000/api/v1/cbt-sessions
+http://localhost:5000/api/v1/cbt-sessions
 ```
 
 ### Authentication

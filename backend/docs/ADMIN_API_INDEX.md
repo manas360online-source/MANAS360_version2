@@ -89,7 +89,7 @@ chmod +x ADMIN_API_CURL_EXAMPLES.sh
 
 # Set your token
 TOKEN="your_jwt_token_here"
-BASE_URL="http://localhost:3000/api/v1/admin"
+BASE_URL="http://localhost:5000/api/v1/admin"
 
 # Copy curl commands from script
 curl -X GET "${BASE_URL}/users" \
@@ -130,7 +130,7 @@ All endpoints require:
 ### Get your token:
 ```bash
 # Login to get token
-curl -X POST "http://localhost:3000/api/v1/auth/login" \
+curl -X POST "http://localhost:5000/api/v1/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@manas360.com",
@@ -182,7 +182,7 @@ Generate interactive documentation from OpenAPI spec:
 npm install -D @swagger-ui/swagger-ui-dist
 
 # Copy ADMIN_API_OPENAPI.yaml to public folder
-# Access at: http://localhost:3000/swagger-ui.html
+# Access at: http://localhost:5000/swagger-ui.html
 ```
 
 ### Postman
@@ -195,7 +195,7 @@ npm install -D @swagger-ui/swagger-ui-dist
 ### VS Code REST Client
 Create `.http` file:
 ```http
-@base = http://localhost:3000/api/v1/admin
+@base = http://localhost:5000/api/v1/admin
 @token = your-jwt-token-here
 
 ### List Users

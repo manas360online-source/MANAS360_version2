@@ -269,6 +269,21 @@ export const invalidateMySession = async (userId: string, sessionId: string): Pr
 	await db.authSession.update({ where: { id: session.id }, data: { revokedAt: new Date() } });
 };
 
+export const invalidateAllMySessions = async (userId: string): Promise<{ revokedCount: number }> => {
+	await assertUserIsActive(userId);
+
+	const result = await db.authSession.updateMany({
+		where: {
+			userId,
+			revokedAt: null,
+			expiresAt: { gt: new Date() },
+		},
+		data: { revokedAt: new Date() },
+	});
+
+	return { revokedCount: Number(result.count || 0) };
+};
+
 export const restoreDeletedUserAccount = async (userId: string) => {
 	const restored = await db.user.updateMany({
 		where: { id: userId, isDeleted: true },

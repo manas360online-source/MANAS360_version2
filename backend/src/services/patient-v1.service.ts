@@ -108,7 +108,7 @@ export const getPatientDashboard = async (userId: string) => {
 			where: { patientId: patientProfile.id },
 			orderBy: { date: 'desc' },
 			take: 7,
-			select: { moodScore: true, note: true, date: true },
+			select: { id: true, moodScore: true, note: true, date: true },
 		}),
 		db.user.findMany({
 			where: { role: 'THERAPIST', isDeleted: false },
@@ -172,11 +172,11 @@ export const getPatientDashboard = async (userId: string) => {
 			description: String(session.therapistProfile?.name || `${session.therapistProfile?.firstName || ''} ${session.therapistProfile?.lastName || ''}`.trim() || 'Therapist'),
 			date: session.dateTime,
 		})),
-		...recentMoodRaw.slice(0, 3).map((mood: any) => ({
-			id: `mood-${mood.id || mood.date}`,
+		...recentMoodRaw.slice(0, 3).map((mood: any, index: number) => ({
+			id: `mood-${mood.id || mood.date || index}-${index}`,
 			type: 'mood',
 			title: 'Mood check-in saved',
-			description: `Mood score ${mood.moodScore}/5`,
+			description: mood.note ? String(mood.note) : `Mood score ${mood.moodScore}/5`,
 			date: mood.date,
 		})),
 	]
@@ -865,21 +865,272 @@ export const submitAssessment = async (userId: string, input: { type: string; sc
 export const createMoodLog = async (userId: string, input: { mood: number; note?: string }) => {
 	const patientProfile = await getPatientProfile(userId);
 	if (!Number.isFinite(input.mood) || input.mood < 1 || input.mood > 5) throw new AppError('mood must be between 1 and 5', 422);
-	const created = await db.patientMoodEntry.create({
-		data: {
-			patientId: patientProfile.id,
-			moodScore: Math.floor(input.mood),
-			note: input.note?.trim() || null,
-			date: new Date(),
-		},
-	});
-	return { id: created.id, mood: created.moodScore, note: created.note, created_at: created.createdAt };
+	const moodValue = Math.floor(input.mood);
+	const note = input.note?.trim() || null;
+	const now = new Date();
+
+	let created: any | null = null;
+	const patientMoodModel = db.patientMoodEntry;
+	if (patientMoodModel && typeof patientMoodModel.create === 'function') {
+		created = await patientMoodModel
+			.create({
+				data: {
+					patientId: patientProfile.id,
+					moodScore: moodValue,
+					note,
+					date: now,
+				},
+			})
+			.catch(() => null);
+	}
+
+	let moodLog: any | null = null;
+	const moodLogModel = db.moodLog;
+	if (moodLogModel && typeof moodLogModel.create === 'function') {
+		moodLog = await moodLogModel
+			.create({
+				data: {
+					userId,
+					moodValue,
+					note,
+					source: 'manual',
+					loggedAt: now,
+				},
+			})
+			.catch(() => null);
+	}
+
+	return {
+		id: created?.id || moodLog?.id,
+		mood: Number(created?.moodScore ?? moodLog?.moodValue ?? moodValue),
+		note: created?.note ?? moodLog?.note ?? note,
+		created_at: created?.createdAt ?? moodLog?.createdAt ?? now,
+	};
 };
 
 export const getMoodHistory = async (userId: string) => {
 	const patientProfile = await getPatientProfile(userId);
-	const rows = await db.patientMoodEntry.findMany({ where: { patientId: patientProfile.id }, orderBy: { date: 'desc' }, take: 60 });
-	return rows.map((r: any) => ({ id: r.id, mood: r.moodScore, note: r.note, created_at: r.createdAt }));
+	const patientMoodModel = db.patientMoodEntry;
+	if (patientMoodModel && typeof patientMoodModel.findMany === 'function') {
+		const rows = await patientMoodModel.findMany({ where: { patientId: patientProfile.id }, orderBy: { date: 'desc' }, take: 60 });
+		return rows.map((r: any) => ({ id: r.id, mood: r.moodScore, note: r.note, created_at: r.createdAt }));
+	}
+
+	const moodLogModel = db.moodLog;
+	if (!moodLogModel || typeof moodLogModel.findMany !== 'function') {
+		return [];
+	}
+
+	const moodLogRows = await moodLogModel.findMany({ where: { userId }, orderBy: { loggedAt: 'desc' }, take: 60 }).catch(() => []);
+	return moodLogRows.map((row: any) => ({
+		id: row.id,
+		mood: Number(row.moodValue || 0),
+		note: row.note,
+		created_at: row.createdAt || row.loggedAt,
+	}));
+};
+
+export const getMoodToday = async (userId: string) => {
+	const history = await getMoodHistory(userId);
+	const now = new Date();
+	const dayStart = new Date(now);
+	dayStart.setHours(0, 0, 0, 0);
+
+	const todayEntries = history.filter((entry: any) => {
+		const at = new Date(entry.created_at);
+		return !Number.isNaN(at.getTime()) && at >= dayStart;
+	});
+
+	const latest = todayEntries[0] || null;
+	return {
+		date: dayStart.toISOString(),
+		entryCount: todayEntries.length,
+		latest,
+	};
+};
+
+export const getMoodStats = async (userId: string) => {
+	const history = await getMoodHistory(userId);
+	if (!history.length) {
+		return {
+			totalCheckins: 0,
+			averageMood: 0,
+			last7DaysAverage: 0,
+			last30DaysAverage: 0,
+			currentStreak: 0,
+			longestStreak: 0,
+			highestMood: 0,
+			lowestMood: 0,
+		};
+	}
+
+	const rows = history
+		.map((entry: any) => ({
+			mood: Number(entry.mood || 0),
+			createdAt: new Date(entry.created_at),
+		}))
+		.filter((entry: any) => Number.isFinite(entry.mood) && !Number.isNaN(entry.createdAt.getTime()));
+
+	if (!rows.length) {
+		return {
+			totalCheckins: 0,
+			averageMood: 0,
+			last7DaysAverage: 0,
+			last30DaysAverage: 0,
+			currentStreak: 0,
+			longestStreak: 0,
+			highestMood: 0,
+			lowestMood: 0,
+		};
+	}
+
+	const average = (items: any[]) =>
+		items.length
+			? Number((items.reduce((sum: number, item: any) => sum + Number(item.mood || 0), 0) / items.length).toFixed(2))
+			: 0;
+
+	const now = new Date();
+	const day7 = new Date(now);
+	day7.setDate(day7.getDate() - 7);
+	const day30 = new Date(now);
+	day30.setDate(day30.getDate() - 30);
+
+	const last7 = rows.filter((entry: any) => entry.createdAt >= day7);
+	const last30 = rows.filter((entry: any) => entry.createdAt >= day30);
+
+	const sortedDays = [...new Set(rows.map((entry: any) => entry.createdAt.toISOString().slice(0, 10)))] as string[];
+	sortedDays.sort((a, b) => b.localeCompare(a));
+	let currentStreak = 0;
+	let cursor = new Date();
+	cursor.setHours(0, 0, 0, 0);
+
+	for (const day of sortedDays) {
+		const cursorKey = cursor.toISOString().slice(0, 10);
+		if (day === cursorKey) {
+			currentStreak += 1;
+			cursor.setDate(cursor.getDate() - 1);
+			continue;
+		}
+		if (currentStreak === 0) {
+			cursor.setDate(cursor.getDate() - 1);
+			if (day === cursor.toISOString().slice(0, 10)) {
+				currentStreak += 1;
+				cursor.setDate(cursor.getDate() - 1);
+				continue;
+			}
+		}
+		break;
+	}
+
+	let longestStreak = 0;
+	let streak = 0;
+	let prevDay: Date | null = null;
+	const ascDays = [...sortedDays].reverse();
+	for (const day of ascDays) {
+		const date = new Date(`${day}T00:00:00.000Z`);
+		if (!prevDay) {
+			streak = 1;
+		} else {
+			const diffDays = Math.round((date.getTime() - prevDay.getTime()) / (24 * 60 * 60 * 1000));
+			streak = diffDays === 1 ? streak + 1 : 1;
+		}
+		if (streak > longestStreak) longestStreak = streak;
+		prevDay = date;
+	}
+
+	return {
+		totalCheckins: rows.length,
+		averageMood: average(rows),
+		last7DaysAverage: average(last7),
+		last30DaysAverage: average(last30),
+		currentStreak,
+		longestStreak,
+		highestMood: Math.max(...rows.map((entry: any) => entry.mood)),
+		lowestMood: Math.min(...rows.map((entry: any) => entry.mood)),
+	};
+};
+
+export const getPatientProgressAnalytics = async (userId: string) => {
+	const patientProfile = await getPatientProfile(userId);
+	const [sessions, exercises, assessments, moodHistory] = await Promise.all([
+		db.therapySession.findMany({
+			where: { patientProfileId: patientProfile.id },
+			select: { id: true, status: true, dateTime: true },
+			orderBy: { dateTime: 'asc' },
+		}),
+		db.patientExercise.findMany({
+			where: { patientId: patientProfile.id },
+			select: { id: true, status: true, createdAt: true },
+			orderBy: { createdAt: 'asc' },
+		}).catch(() => []),
+		db.patientAssessment.findMany({
+			where: { patientId: patientProfile.id },
+			select: { id: true, type: true, totalScore: true, severityLevel: true, createdAt: true },
+			orderBy: { createdAt: 'asc' },
+			take: 20,
+		}),
+		getMoodHistory(userId),
+	]);
+
+	const totalSessions = sessions.length;
+	const completedSessions = sessions.filter((session: any) => String(session.status).toUpperCase() === 'COMPLETED').length;
+	const totalExercises = exercises.length;
+	const completedExercises = exercises.filter((exercise: any) => String(exercise.status).toUpperCase() === 'COMPLETED').length;
+
+	const moodByWeek = (() => {
+		const map = new Map<string, { week: string; total: number; count: number }>();
+		for (const entry of moodHistory) {
+			const date = new Date(entry.created_at);
+			if (Number.isNaN(date.getTime())) continue;
+			const weekStart = new Date(date);
+			const day = weekStart.getDay();
+			const diff = day === 0 ? -6 : 1 - day;
+			weekStart.setDate(weekStart.getDate() + diff);
+			weekStart.setHours(0, 0, 0, 0);
+			const key = weekStart.toISOString().slice(0, 10);
+			const existing = map.get(key) || { week: key, total: 0, count: 0 };
+			existing.total += Number(entry.mood || 0);
+			existing.count += 1;
+			map.set(key, existing);
+		}
+		return [...map.values()]
+			.sort((a, b) => a.week.localeCompare(b.week))
+			.slice(-8)
+			.map((item) => ({ week: item.week, averageMood: Number((item.total / item.count).toFixed(2)) }));
+	})();
+
+	const assessmentTrend = assessments.map((item: any) => ({
+		id: item.id,
+		type: item.type,
+		score: item.totalScore,
+		severity: item.severityLevel,
+		createdAt: item.createdAt,
+	}));
+
+	const latestAssessment = assessments[assessments.length - 1] || null;
+	const firstAssessment = assessments[0] || null;
+	const scoreDelta = firstAssessment && latestAssessment
+		? Number(latestAssessment.totalScore || 0) - Number(firstAssessment.totalScore || 0)
+		: 0;
+
+	return {
+		summary: {
+			totalSessions,
+			completedSessions,
+			sessionCompletionRate: totalSessions ? Number(((completedSessions / totalSessions) * 100).toFixed(1)) : 0,
+			totalExercises,
+			completedExercises,
+			exerciseCompletionRate: totalExercises ? Number(((completedExercises / totalExercises) * 100).toFixed(1)) : 0,
+			moodCheckins: moodHistory.length,
+		},
+		moodTrend: moodByWeek,
+		assessmentTrend,
+		insights: {
+			latestAssessmentScore: latestAssessment?.totalScore ?? null,
+			latestAssessmentSeverity: latestAssessment?.severityLevel ?? null,
+			assessmentScoreDelta: scoreDelta,
+		},
+	};
 };
 
 export const chatWithAi = async (userId: string, input: { message: string }) => {
@@ -915,4 +1166,158 @@ export const markNotificationRead = async (userId: string, notificationId: strin
 	const updated = await db.notification.updateMany({ where: { id: notificationId, userId }, data: { isRead: true } });
 	if (!updated.count) throw new AppError('Notification not found', 404);
 	return { id: notificationId, is_read: true };
+};
+
+export const getPatientSettings = async (userId: string) => {
+	const [latestSnapshot, patientProfile, user] = await Promise.all([
+		db.notification.findFirst({
+			where: { userId, type: 'PATIENT_SETTINGS_SNAPSHOT' },
+			orderBy: { createdAt: 'desc' },
+			select: { payload: true, createdAt: true },
+		}),
+		db.patientProfile.findUnique({ where: { userId }, select: { emergencyContact: true } }).catch(() => null),
+		db.user.findUnique({ where: { id: userId }, select: { mfaEnabled: true } }).catch(() => null),
+	]);
+
+	const payloadSettings = latestSnapshot?.payload?.settings && typeof latestSnapshot.payload.settings === 'object'
+		? latestSnapshot.payload.settings
+		: null;
+
+	const emergencyContact = patientProfile?.emergencyContact && typeof patientProfile.emergencyContact === 'object'
+		? patientProfile.emergencyContact
+		: null;
+
+	const mergedSettings = {
+		...(payloadSettings || {}),
+		therapy: {
+			...((payloadSettings as any)?.therapy || {}),
+			emergencyName: String((emergencyContact as any)?.name || (payloadSettings as any)?.therapy?.emergencyName || ''),
+			emergencyPhone: String((emergencyContact as any)?.phone || (payloadSettings as any)?.therapy?.emergencyPhone || ''),
+			emergencyRelationship: String((emergencyContact as any)?.relationship || (payloadSettings as any)?.therapy?.emergencyRelationship || ''),
+		},
+		security: {
+			...((payloadSettings as any)?.security || {}),
+			twoFactorEnabled: Boolean((payloadSettings as any)?.security?.twoFactorEnabled ?? user?.mfaEnabled ?? false),
+		},
+	};
+
+	return {
+		settings: mergedSettings,
+		savedAt: latestSnapshot?.createdAt || null,
+	};
+};
+
+export const updatePatientSettings = async (userId: string, settings: Record<string, any>) => {
+	if (!settings || typeof settings !== 'object') throw new AppError('settings payload is required', 422);
+
+	const emergencyName = String(settings?.therapy?.emergencyName || '').trim();
+	const emergencyPhone = String(settings?.therapy?.emergencyPhone || '').trim();
+	const emergencyRelationship = String(settings?.therapy?.emergencyRelationship || '').trim();
+
+	await Promise.all([
+		db.notification.create({
+			data: {
+				userId,
+				type: 'PATIENT_SETTINGS_SNAPSHOT',
+				title: 'Patient settings updated',
+				message: 'Patient settings were updated from account settings page.',
+				payload: { settings },
+				isRead: true,
+				sentAt: new Date(),
+			},
+		}),
+		db.user.updateMany({
+			where: { id: userId, isDeleted: false },
+			data: {
+				mfaEnabled: Boolean(settings?.security?.twoFactorEnabled),
+			},
+		}),
+		db.patientProfile.updateMany({
+			where: { userId },
+			data: {
+				emergencyContact: {
+					name: emergencyName,
+					phone: emergencyPhone,
+					relationship: emergencyRelationship,
+				},
+			},
+		}).catch(() => ({ count: 0 })),
+	]);
+
+	return {
+		settings,
+		savedAt: new Date().toISOString(),
+	};
+};
+
+export const getPatientSupportCenter = async (userId: string) => {
+	const tickets = await db.notification.findMany({
+		where: { userId, type: 'SUPPORT_TICKET' },
+		orderBy: { createdAt: 'desc' },
+		take: 20,
+		select: {
+			id: true,
+			title: true,
+			message: true,
+			payload: true,
+			createdAt: true,
+		},
+	});
+
+	return {
+		faqs: [
+			{ id: 'faq-1', question: 'How do I reschedule a therapy session?', answer: 'Go to Sessions, open your session and choose reschedule if available.' },
+			{ id: 'faq-2', question: 'How can I update my payment method?', answer: 'Open Settings → Billing & Subscription and update your payment details.' },
+			{ id: 'faq-3', question: 'How do I contact crisis support?', answer: 'Use the Crisis Support option in the sidebar for immediate assistance.' },
+		],
+		emergencyContacts: [
+			{ label: 'Tele-MANAS', value: '1800-599-0019' },
+			{ label: 'Emergency', value: '112' },
+		],
+		tickets: tickets.map((ticket: any) => ({
+			id: ticket.id,
+			title: ticket.title,
+			message: ticket.message,
+			status: String(ticket.payload?.status || 'OPEN'),
+			category: String(ticket.payload?.category || 'general'),
+			priority: String(ticket.payload?.priority || 'medium'),
+			createdAt: ticket.createdAt,
+		})),
+	};
+};
+
+export const createPatientSupportTicket = async (
+	userId: string,
+	input: { subject: string; message: string; category?: string; priority?: string },
+) => {
+	const subject = String(input.subject || '').trim();
+	const message = String(input.message || '').trim();
+	if (!subject) throw new AppError('subject is required', 422);
+	if (!message) throw new AppError('message is required', 422);
+
+	const created = await db.notification.create({
+		data: {
+			userId,
+			type: 'SUPPORT_TICKET',
+			title: subject,
+			message,
+			payload: {
+				category: String(input.category || 'general'),
+				priority: String(input.priority || 'medium'),
+				status: 'OPEN',
+				ticketRef: `SUP-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
+			},
+			sentAt: new Date(),
+		},
+	});
+
+	return {
+		id: created.id,
+		title: created.title,
+		message: created.message,
+		status: 'OPEN',
+		category: String(created.payload?.category || 'general'),
+		priority: String(created.payload?.priority || 'medium'),
+		createdAt: created.createdAt,
+	};
 };

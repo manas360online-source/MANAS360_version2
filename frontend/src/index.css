@@ -1,5 +1,5 @@
-/* Import fonts - Therapeutic typography */
-@import url('https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@300;400;600&family=DM+Sans:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+/* Import fonts - MANAS360 dashboard theme typography */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
 
 /* Tailwind CSS */
 @tailwind base;
@@ -20,7 +20,7 @@
     --wellness-text: #2C3333;
 
     /* Typography */
-    --serif: 'Crimson Pro', serif;
+    --serif: 'Outfit', sans-serif;
     --sans: 'DM Sans', sans-serif;
   }
 
@@ -35,7 +35,7 @@
 
   body {
     @apply font-sans text-wellness-text bg-wellness-bg overflow-x-hidden antialiased;
-    background: #F5F3EE;
+    background: #FAFAF8;
     line-height: 1.7;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -43,8 +43,8 @@
 
   /* Headings - softer hierarchy */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif text-wellness-text;
-    font-weight: 400;
+    @apply font-display text-wellness-text;
+    font-weight: 600;
     letter-spacing: -0.02em;
   }
 

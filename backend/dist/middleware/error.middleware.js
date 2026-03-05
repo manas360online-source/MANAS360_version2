@@ -18,6 +18,9 @@ const notFoundHandler = (_req, _res, next) => {
 };
 exports.notFoundHandler = notFoundHandler;
 const errorHandler = (error, _req, res, _next) => {
+    if (process.env.NODE_ENV !== 'production') {
+        console.error('[errorHandler]', error);
+    }
     if (error instanceof multer_1.MulterError) {
         res.status(400).json({
             message: error.code === 'LIMIT_FILE_SIZE' ? 'File too large. Max size is 5MB' : error.message,

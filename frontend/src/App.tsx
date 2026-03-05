@@ -24,6 +24,7 @@ import SessionsPage from './pages/patient/SessionsPage'
 import PatientSessionDetailPage from './pages/patient/SessionDetailPage'
 import AIChatPage from './pages/patient/AIChatPage'
 import ProfilePage from './pages/patient/ProfilePage'
+import SettingsPage from './pages/patient/SettingsPage'
 import LiveSessionPage from './pages/patient/LiveSessionPage'
 import AssessmentsPage from './pages/patient/AssessmentsPage'
 import BillingPage from './pages/patient/BillingPage'
@@ -31,6 +32,8 @@ import DocumentsPage from './pages/patient/DocumentsPage'
 import SupportPage from './pages/patient/SupportPage'
 import NotificationsPage from './pages/patient/NotificationsPage'
 import CBTSessionPlayerPage from './pages/patient/CBTSessionPlayerPage'
+import MoodTrackerPage from './pages/patient/MoodTrackerPage'
+import MyProgressPage from './pages/patient/MyProgressPage'
 import AdminPortalLoginPage from './pages/admin/AdminPortalLoginPage'
 import AdminDashboardPage from './pages/admin/Dashboard'
 import AdminShellLayout from './components/admin/AdminShellLayout'
@@ -172,11 +175,14 @@ function App() {
           <Route path="sessions/:id/live" element={<LiveSessionPage />} />
           <Route path="messages" element={<AIChatPage />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="assessments" element={<AssessmentsPage />} />
           <Route path="billing" element={<BillingPage />} />
           <Route path="documents" element={<DocumentsPage />} />
           <Route path="support" element={<SupportPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="mood" element={<MoodTrackerPage />} />
+          <Route path="progress" element={<MyProgressPage />} />
         </Route>
 
         <Route path="/dashboard" element={<Navigate to="/patient/dashboard" replace />} />
@@ -188,6 +194,7 @@ function App() {
         <Route path="/sessions/:id/live" element={<Navigate to="/patient/sessions" replace />} />
         <Route path="/ai-chat" element={<Navigate to="/patient/messages" replace />} />
         <Route path="/profile" element={<Navigate to="/patient/profile" replace />} />
+        <Route path="/settings" element={<Navigate to="/patient/settings" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

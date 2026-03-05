@@ -11,6 +11,7 @@ router.patch('/me', auth_middleware_1.requireAuth, ...validate_middleware_1.vali
 router.patch('/me/password', auth_middleware_1.requireAuth, ...validate_middleware_1.validateChangePasswordRequest, (0, validate_middleware_1.asyncHandler)(user_controller_1.patchMePasswordController));
 router.post('/me/photo', auth_middleware_1.requireAuth, validate_middleware_1.uploadProfilePhotoMiddleware, (0, validate_middleware_1.asyncHandler)(user_controller_1.uploadMePhotoController));
 router.get('/me/sessions', auth_middleware_1.requireAuth, rateLimiter_middleware_1.userSessionRateLimiter, (0, validate_middleware_1.asyncHandler)(user_controller_1.getMySessionsController));
+router.delete('/me/sessions', auth_middleware_1.requireAuth, rateLimiter_middleware_1.userSessionRateLimiter, (0, validate_middleware_1.asyncHandler)(user_controller_1.deleteMySessionsController));
 router.delete('/me/sessions/:id', auth_middleware_1.requireAuth, rateLimiter_middleware_1.userSessionRateLimiter, ...validate_middleware_1.validateSessionIdParam, (0, validate_middleware_1.asyncHandler)(user_controller_1.deleteMySessionController));
 router.delete('/me', auth_middleware_1.requireAuth, (0, validate_middleware_1.asyncHandler)(user_controller_1.deleteMeController));
 exports.default = router;

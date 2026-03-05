@@ -170,11 +170,11 @@ PATIENT_TOKEN=$(curl ... /auth/login | jq -r '.data.token')
 
 # This works: ✅
 curl -H "Authorization: Bearer $ADMIN_TOKEN" \
-  http://localhost:3000/api/v1/admin/users
+  http://localhost:5000/api/v1/admin/users
 
 # This fails: ❌ Returns 403
 curl -H "Authorization: Bearer $PATIENT_TOKEN" \
-  http://localhost:3000/api/v1/admin/users
+  http://localhost:5000/api/v1/admin/users
 ```
 
 ## For Operations

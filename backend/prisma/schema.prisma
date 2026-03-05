@@ -112,6 +112,13 @@ model User {
   authAuditLogs             AuthAuditLog[]
   aiConversations           AIConversation[]
   chatMessages              ChatMessage[]
+  phq9Assessments           PHQ9Assessment[]          @relation("UserPHQ9Assessments")
+  gad7Assessments           GAD7Assessment[]          @relation("UserGAD7Assessments")
+  riskScores                RiskScore[]               @relation("UserRiskScores")
+  crisisEscalations         CrisisEscalation[]        @relation("UserCrisisEscalations")
+  moodLogs                  MoodLog[]                 @relation("UserMoodLogs")
+  chatAnalyses              ChatAnalysis[]            @relation("UserChatAnalyses")
+  moodPredictions           MoodPrediction[]          @relation("UserMoodPredictions")
   notifications             Notification[]
   bookingIntentsAsPatient   SessionBookingIntent[] @relation("BookingIntentPatient")
   bookingIntentsAsProvider  SessionBookingIntent[] @relation("BookingIntentProvider")
@@ -598,6 +605,158 @@ model ChatMessage {
   @@index([userId, botType, timestamp(sort: Desc)], map: "chat_messages_user_bot_ts_idx")
   @@index([userId, timestamp(sort: Desc)], map: "chat_messages_user_ts_idx")
   @@map("chat_messages")
+}
+
+model PHQ9Assessment {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  answers      Int[]
+  totalScore   Int      @map("total_score")
+  q9Score      Int      @map("q9_score")
+  severity     String
+  riskWeight   Float    @map("risk_weight")
+  q9CrisisFlag Boolean  @default(false) @map("q9_crisis_flag")
+  assessedAt   DateTime @default(now()) @map("assessed_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation("UserPHQ9Assessments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, assessedAt(sort: Desc)], map: "phq9_assessments_user_ts_idx")
+  @@index([q9CrisisFlag, assessedAt(sort: Desc)], map: "phq9_assessments_q9_idx")
+  @@map("phq9_assessments")
+}
+
+model GAD7Assessment {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  answers    Int[]
+  totalScore Int      @map("total_score")
+  severity   String
+  riskWeight Float    @map("risk_weight")
+  assessedAt DateTime @default(now()) @map("assessed_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  user User @relation("UserGAD7Assessments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, assessedAt(sort: Desc)], map: "gad7_assessments_user_ts_idx")
+  @@map("gad7_assessments")
+}
+
+model RiskScore {
+  id                  String   @id @default(uuid())
+  userId              String   @map("user_id")
+  phq9Component       Float    @default(0) @map("phq9_component")
+  gad7Component       Float    @default(0) @map("gad7_component")
+  chatComponent       Float    @default(0) @map("chat_component")
+  behavioralComponent Float    @default(0) @map("behavioral_component")
+  compositeScore      Float    @default(0) @map("composite_score")
+  riskLevel           String   @map("risk_level")
+  source              String   @default("system")
+  metadata            Json?
+  evaluatedAt         DateTime @default(now()) @map("evaluated_at")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user User @relation("UserRiskScores", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, evaluatedAt(sort: Desc)], map: "risk_scores_user_ts_idx")
+  @@index([riskLevel, evaluatedAt(sort: Desc)], map: "risk_scores_level_ts_idx")
+  @@map("risk_scores")
+}
+
+model CrisisEscalation {
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  riskScoreId        String?  @map("risk_score_id")
+  riskLevel          String   @map("risk_level")
+  status             String   @default("OPEN")
+  reason             String?
+  opsAlertedAt       DateTime? @map("ops_alerted_at")
+  patientShownAt     DateTime? @map("patient_shown_at")
+  therapistAlertedAt DateTime? @map("therapist_alerted_at")
+  backupAlertedAt    DateTime? @map("backup_alerted_at")
+  therapistAckAt     DateTime? @map("therapist_ack_at")
+  therapistId        String?  @map("therapist_id")
+  backupTherapistId  String?  @map("backup_therapist_id")
+  payload            Json?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user User @relation("UserCrisisEscalations", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status, createdAt(sort: Desc)], map: "crisis_escalations_user_status_idx")
+  @@index([riskLevel, status, createdAt(sort: Desc)], map: "crisis_escalations_level_status_idx")
+  @@map("crisis_escalations")
+}
+
+model MoodLog {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  moodValue Int      @map("mood_value")
+  note      String?
+  source    String   @default("manual")
+  loggedAt  DateTime @default(now()) @map("logged_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation("UserMoodLogs", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, loggedAt(sort: Desc)], map: "mood_logs_user_ts_idx")
+  @@map("mood_logs")
+}
+
+model ChatAnalysis {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  botType        String   @map("bot_type")
+  messageContent String   @map("message_content")
+  sentimentScore Float    @default(0) @map("sentiment_score")
+  crisisRisk     Float    @default(0) @map("crisis_risk")
+  crisisIntent   Boolean  @default(false) @map("crisis_intent")
+  urgencyLevel   String   @default("LOW") @map("urgency_level")
+  detectedThemes String[] @default([]) @map("detected_themes")
+  fallbackUsed   Boolean  @default(false) @map("fallback_used")
+  analysisJson   Json     @map("analysis_json")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation("UserChatAnalyses", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)], map: "chat_analyses_user_ts_idx")
+  @@index([urgencyLevel, createdAt(sort: Desc)], map: "chat_analyses_urgency_ts_idx")
+  @@map("chat_analyses")
+}
+
+model MoodPrediction {
+  id                String   @id @default(uuid())
+  userId            String   @map("user_id")
+  batchDate         DateTime? @map("batch_date")
+  predictionDate    DateTime @map("prediction_date")
+  predictedMood     Float    @map("predicted_mood")
+  day1Predicted     Float?   @map("day1_predicted")
+  day2Predicted     Float?   @map("day2_predicted")
+  day3Predicted     Float?   @map("day3_predicted")
+  day4Predicted     Float?   @map("day4_predicted")
+  day5Predicted     Float?   @map("day5_predicted")
+  day6Predicted     Float?   @map("day6_predicted")
+  day7Predicted     Float?   @map("day7_predicted")
+  confidencePct     Float    @map("confidence_pct")
+  trendDirection    String   @map("trend_direction")
+  deteriorationAlert Boolean @default(false) @map("deterioration_alert")
+  factorAnalysis    Json?
+  influencingFactors Json?   @map("influencing_factors")
+  actualMood        Float?   @map("actual_mood")
+  maeSnapshot       Float?   @map("mae_snapshot")
+  accuracyWithin2Pct Float?  @map("accuracy_within_2_pct")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user User @relation("UserMoodPredictions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, predictionDate], map: "mood_predictions_user_date_uq")
+  @@index([userId, predictionDate(sort: Desc)], map: "mood_predictions_user_date_idx")
+  @@map("mood_predictions")
 }
 
 model Notification {

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
 	deleteMySessionController,
+	deleteMySessionsController,
 	deleteMeController,
 	getMeController,
 	getMySessionsController,
@@ -25,6 +26,7 @@ router.patch('/me', requireAuth, ...validateUpdateMeRequest, asyncHandler(patchM
 router.patch('/me/password', requireAuth, ...validateChangePasswordRequest, asyncHandler(patchMePasswordController));
 router.post('/me/photo', requireAuth, uploadProfilePhotoMiddleware, asyncHandler(uploadMePhotoController));
 router.get('/me/sessions', requireAuth, userSessionRateLimiter, asyncHandler(getMySessionsController));
+router.delete('/me/sessions', requireAuth, userSessionRateLimiter, asyncHandler(deleteMySessionsController));
 router.delete(
 	'/me/sessions/:id',
 	requireAuth,

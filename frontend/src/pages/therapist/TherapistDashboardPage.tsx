@@ -6,10 +6,17 @@ import {
   Clock3,
   FileText,
   MessageSquare,
+  TrendingUp,
   Video,
   Wallet,
 } from 'lucide-react';
-import { therapistApi, type TherapistDashboardResponse } from '../../api/therapist.api';
+import {
+  therapistApi,
+  type MoodAccuracyResponse,
+  type MoodHistoryResponse,
+  type MoodPredictionResponse,
+  type TherapistDashboardResponse,
+} from '../../api/therapist.api';
 import TherapistBadge from '../../components/therapist/dashboard/TherapistBadge';
 import TherapistButton from '../../components/therapist/dashboard/TherapistButton';
 import TherapistCard from '../../components/therapist/dashboard/TherapistCard';
@@ -26,10 +33,45 @@ const formatInr = (minor: number): string =>
 const formatTime = (value: string): string =>
   new Date(value).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 
+const formatDate = (value: string): string =>
+  new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
 export default function TherapistDashboardPage() {
   const [data, setData] = useState<TherapistDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [patientIdInput, setPatientIdInput] = useState('');
+  const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [moodPrediction, setMoodPrediction] = useState<MoodPredictionResponse | null>(null);
+  const [moodHistory, setMoodHistory] = useState<MoodHistoryResponse | null>(null);
+  const [moodAccuracy, setMoodAccuracy] = useState<MoodAccuracyResponse | null>(null);
+  const [moodLoading, setMoodLoading] = useState(false);
+  const [moodError, setMoodError] = useState<string | null>(null);
+
+  const loadMoodInsights = async (userIdRaw: string) => {
+    const userId = userIdRaw.trim();
+    if (!userId) return;
+
+    setMoodLoading(true);
+    setMoodError(null);
+    try {
+      const [prediction, history, accuracy] = await Promise.all([
+        therapistApi.getPatientMoodPrediction(userId),
+        therapistApi.getPatientMoodHistory(userId),
+        therapistApi.getPatientMoodAccuracy(userId),
+      ]);
+      setMoodPrediction(prediction);
+      setMoodHistory(history);
+      setMoodAccuracy(accuracy);
+      setSelectedPatientId(userId);
+      setPatientIdInput(userId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load mood prediction insights';
+      setMoodError(message);
+    } finally {
+      setMoodLoading(false);
+    }
+  };
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -48,6 +90,68 @@ export default function TherapistDashboardPage() {
   useEffect(() => {
     void loadDashboard();
   }, []);
+
+  useEffect(() => {
+    const preload = async () => {
+      const initialPatientId = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('patientId') || ''
+        : '';
+
+      if (initialPatientId) {
+        await loadMoodInsights(initialPatientId);
+        return;
+      }
+
+      try {
+        const patients = await therapistApi.getPatients();
+        const firstPatientId = String(patients?.items?.[0]?.id || '').trim();
+        if (firstPatientId) {
+          await loadMoodInsights(firstPatientId);
+        }
+      } catch {
+        // keep dashboard usable even if patient preload fails
+      }
+    };
+
+    void preload();
+  }, []);
+
+  const recentActualMood = useMemo(() => {
+    if (!moodHistory) return [] as Array<{ label: string; value: number }>;
+    const fromMoodLogs = Array.isArray(moodHistory.mood_logs)
+      ? moodHistory.mood_logs
+          .map((item) => ({
+            date: String(item.loggedAt || item.createdAt || ''),
+            value: Number(item.moodValue || 0),
+          }))
+          .filter((item) => item.date && Number.isFinite(item.value) && item.value > 0)
+      : [];
+    const fromLegacy = Array.isArray(moodHistory.legacy_mood_entries)
+      ? moodHistory.legacy_mood_entries
+          .map((item) => ({
+            date: String(item.date || item.createdAt || ''),
+            value: Number(item.moodScore || 0),
+          }))
+          .filter((item) => item.date && Number.isFinite(item.value) && item.value > 0)
+      : [];
+
+    const merged = [...fromMoodLogs, ...fromLegacy]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(-7);
+
+    return merged.map((point) => ({
+      label: formatDate(point.date),
+      value: point.value,
+    }));
+  }, [moodHistory]);
+
+  const predictedMood = useMemo(() => {
+    if (!moodPrediction?.predictions?.length) return [] as Array<{ label: string; value: number }>;
+    return moodPrediction.predictions.map((point) => ({
+      label: point.weekday || formatDate(point.date),
+      value: Number(point.predictedMood || 0),
+    }));
+  }, [moodPrediction]);
 
   const statCards = useMemo(() => {
     if (!data) return [] as Array<{ key: string; title: string; icon: any; value: string; note: string; iconBg: string; iconColor: string }>;
@@ -308,6 +412,121 @@ export default function TherapistDashboardPage() {
                 <p className="text-[10px] text-ink-500">Open</p>
               </div>
             </div>
+          </TherapistCard>
+
+          <TherapistCard className="p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="font-display text-base font-bold text-ink-800">Mood Prediction Insights</h3>
+              <span className="inline-flex items-center gap-1 text-xs text-ink-500">
+                <TrendingUp className="h-3.5 w-3.5" />
+                7-day forecast
+              </span>
+            </div>
+
+            <div className="mb-4 flex gap-2">
+              <input
+                value={patientIdInput}
+                onChange={(event) => setPatientIdInput(event.target.value)}
+                placeholder="Enter patient user ID"
+                className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-800 outline-none focus:border-sage-300"
+              />
+              <TherapistButton
+                variant="secondary"
+                className="px-3"
+                onClick={() => void loadMoodInsights(patientIdInput)}
+                disabled={moodLoading || !patientIdInput.trim()}
+              >
+                {moodLoading ? 'Loading...' : 'Load'}
+              </TherapistButton>
+            </div>
+
+            {moodError ? <p className="mb-3 text-xs text-red-600">{moodError}</p> : null}
+            {!selectedPatientId ? <p className="text-xs text-ink-500">Enter a patient ID to view prediction trend, forecast, and influencing factors.</p> : null}
+
+            {selectedPatientId && moodPrediction ? (
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <TherapistBadge variant="sage" label={`Trend: ${moodPrediction.trendDirection || 'STABLE'}`} />
+                  <TherapistBadge variant="default" label={`Confidence: ${Number(moodPrediction.confidencePct || 0)}%`} />
+                  <TherapistBadge
+                    variant={moodPrediction.deteriorationAlert ? 'danger' : 'success'}
+                    label={moodPrediction.deteriorationAlert ? 'Deterioration Alert' : 'No Deterioration Alert'}
+                  />
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Predicted Mood Curve (Next 7 Days)</p>
+                  <div className="grid grid-cols-7 gap-2">
+                    {predictedMood.map((point, index) => (
+                      <div key={`${point.label}-${index}`} className="rounded-lg border border-ink-100 p-2 text-center">
+                        <div className="mx-auto mb-2 flex h-16 w-6 items-end rounded bg-ink-100/70">
+                          <span
+                            className={`w-full rounded ${point.value <= 3 ? 'bg-red-400' : 'bg-sage-400'}`}
+                            style={{ height: `${Math.max(8, Math.min(100, (point.value / 10) * 100))}%` }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-ink-500">{point.label}</p>
+                        <p className="text-xs font-semibold text-ink-800">{point.value.toFixed(1)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Recent Mood History (Last 7 Points)</p>
+                  <div className="grid grid-cols-7 gap-2">
+                    {recentActualMood.map((point, index) => (
+                      <div key={`${point.label}-${index}`} className="rounded-lg border border-ink-100 p-2 text-center">
+                        <p className="text-[10px] text-ink-500">{point.label}</p>
+                        <p className="text-xs font-semibold text-ink-800">{point.value.toFixed(1)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {moodPrediction.influencingFactors ? (
+                  <div className="rounded-lg border border-ink-100 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.08em] text-ink-500">Influencing Factors</p>
+                    <p className="mt-2 text-xs text-ink-600">
+                      <span className="font-semibold text-ink-700">Weekly pattern:</span> {moodPrediction.influencingFactors.weekly_pattern || 'N/A'}
+                    </p>
+                    <p className="mt-1 text-xs text-ink-600">
+                      <span className="font-semibold text-ink-700">Sleep correlation:</span> {moodPrediction.influencingFactors.sleep_mood_correlation || 'N/A'}
+                    </p>
+                    <p className="mt-1 text-xs text-ink-600">
+                      <span className="font-semibold text-ink-700">Clinical note:</span> {moodPrediction.influencingFactors.clinical_note || 'N/A'}
+                    </p>
+                    <p className="mt-2 text-xs text-ink-600">
+                      <span className="font-semibold text-emerald-700">Top positive:</span>{' '}
+                      {(moodPrediction.influencingFactors.top_positive_factors || []).join(', ') || 'None'}
+                    </p>
+                    <p className="mt-1 text-xs text-ink-600">
+                      <span className="font-semibold text-red-700">Top negative:</span>{' '}
+                      {(moodPrediction.influencingFactors.top_negative_factors || []).join(', ') || 'None'}
+                    </p>
+                  </div>
+                ) : null}
+
+                {moodAccuracy ? (
+                  <div className="grid grid-cols-3 gap-2 rounded-lg border border-ink-100 p-3 text-center">
+                    <div>
+                      <p className="text-[10px] text-ink-500">MAE</p>
+                      <p className="font-display text-sm font-bold text-ink-800">{Number(moodAccuracy.mae || 0).toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-ink-500">Within ±2</p>
+                      <p className="font-display text-sm font-bold text-ink-800">{Number(moodAccuracy.within2Pct || 0).toFixed(1)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-ink-500">Target</p>
+                      <p className={`font-display text-sm font-bold ${moodAccuracy.targetMet ? 'text-emerald-700' : 'text-clay-500'}`}>
+                        {moodAccuracy.targetMet ? 'Met' : 'Below'}
+                      </p>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </TherapistCard>
 
           <TherapistCard className="overflow-hidden">

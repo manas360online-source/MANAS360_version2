@@ -6,14 +6,14 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: '0.0.0.0',
-    port: 3000,
+    port: 5173,
     strictPort: true,
     allowedHosts: true, // ✅ CORRECT: Must be boolean true, not 'all'
     open: false,
     cors: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_BACKEND_URL || 'http://localhost:5001',
+        target: process.env.VITE_BACKEND_URL || 'http://localhost:3000',
         changeOrigin: true,
       },
     },
@@ -34,7 +34,7 @@ export default defineConfig({
   },
   preview: {
     host: '0.0.0.0',
-    port: 3000,
+    port: 5173,
     strictPort: true,
     allowedHosts: true, // ✅ CORRECT: Must be boolean true, not 'all'
     cors: true,

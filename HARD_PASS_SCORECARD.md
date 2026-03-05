@@ -49,9 +49,9 @@ Validated against PostgreSQL (`manas360_dev`) with replay/idempotency/concurrenc
 ## 6) Runtime Validation — PASS (with advisory)
 
 - Backend health endpoint verified on alternate port due local port conflict:
-  - `http://localhost:5001/api/health` → `200 OK` ✅
+  - `http://localhost:5000/api/health` → `200 OK` ✅
 - Frontend dev server + API proxy verified:
-  - `http://localhost:3000/api/health` → `200 OK` ✅
+  - `http://localhost:5000/api/health` → `200 OK` ✅
 - Advisory (non-blocking for hard-pass): local Redis is not running in this environment, causing background connection retries (`ECONNREFUSED 127.0.0.1:6379`). Core API health remains green.
 
 ## Scoring

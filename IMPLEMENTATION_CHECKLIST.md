@@ -398,7 +398,7 @@ Development Effort:      40+ hours saved
 1. Review documentation files
 2. Install dependencies: `npm install pdfkit fast-csv date-fns`
 3. Run migration: `npx prisma migrate deploy`
-4. Test health endpoint: `curl http://localhost:3000/api/health`
+4. Test health endpoint: `curl http://localhost:5000/api/health`
 
 ### Short Term (This Week)
 1. Create test template via API

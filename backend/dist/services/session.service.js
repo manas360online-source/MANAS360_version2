@@ -189,20 +189,18 @@ const getMyTherapistSessions = async (userId, query) => {
     await assertTherapistUser(userId);
     const therapistProfileId = userId;
     const pagination = (0, pagination_1.normalizePagination)({ page: query.page, limit: query.limit }, { defaultPage: 1, defaultLimit: 10, maxLimit: 50 });
-    const filter = {
-        therapistId: therapistProfileId,
-    };
+    const prismaFilter2 = { therapistProfileId: String(therapistProfileId) };
     // status filter
     if (query.status) {
-        filter.status = query.status;
+        prismaFilter2.status = String(query.status).toUpperCase();
     }
     // completion filter (if provided and status not explicitly set)
     if (query.completion && !query.status) {
         if (query.completion === 'complete') {
-            filter.status = 'completed';
+            prismaFilter2.status = 'COMPLETED';
         }
         else if (query.completion === 'incomplete') {
-            filter.status = { $ne: 'completed' };
+            prismaFilter2.status = { not: 'COMPLETED' };
         }
     }
     // date range filter
@@ -211,15 +209,15 @@ const getMyTherapistSessions = async (userId, query) => {
         if (query.from) {
             const d = new Date(query.from);
             if (!Number.isNaN(d.getTime()))
-                range.$gte = d;
+                range.gte = d;
         }
         if (query.to) {
             const d = new Date(query.to);
             if (!Number.isNaN(d.getTime()))
-                range.$lte = d;
+                range.lte = d;
         }
         if (Object.keys(range).length) {
-            filter.dateTime = range;
+            prismaFilter2.dateTime = range;
         }
     }
     const now = new Date();
@@ -251,19 +249,12 @@ const getMyTherapistSessions = async (userId, query) => {
                 meta: (0, pagination_1.buildPaginationMeta)(0, pagination),
             };
         }
-        filter.patientId = { $in: patientIds.map(String) };
+        prismaFilter2.patientProfileId = { in: patientIds.map(String) };
     }
     // optional sessionType filter (if stored)
     if (query.type) {
-        filter.sessionType = query.type;
+        prismaFilter2.sessionType = query.type;
     }
-    const prismaFilter2 = { therapistProfileId: String(therapistProfileId) };
-    if (filter.status)
-        prismaFilter2.status = String(filter.status).toUpperCase();
-    if (filter.patientId)
-        prismaFilter2.patientProfileId = filter.patientId;
-    if (filter.dateTime)
-        prismaFilter2.dateTime = filter.dateTime;
     const [totalItems, sessions, pastCount, upcomingCount] = await Promise.all([
         db_1.prisma.therapySession.count({ where: prismaFilter2 }),
         db_1.prisma.therapySession.findMany({
@@ -282,7 +273,10 @@ const getMyTherapistSessions = async (userId, query) => {
         select: { id: true, userId: true, age: true, gender: true },
     });
     const userIds = patientProfiles.map((p) => String(p.userId));
-    const users = await db.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true, email: true, firstName: true, lastName: true } });
+    const users = await db.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, name: true, email: true, firstName: true, lastName: true, showNameToProviders: true },
+    });
     const patientMap = new Map(patientProfiles.map((patient) => [String(patient.id), patient]));
     const userMap = new Map(users.map((u) => [String(u.id), u]));
     const items = sessions.map((session) => {
@@ -290,9 +284,15 @@ const getMyTherapistSessions = async (userId, query) => {
         const user = patient ? userMap.get(String(patient.userId)) : undefined;
         const sessionDate = new Date(session.dateTime);
         // Minimal patient footprint for dashboard list (no PII)
-        const displayName = String(user?.name ?? '').trim() ||
+        const isNameVisible = user?.showNameToProviders !== false;
+        const resolvedName = String(user?.name ?? '').trim() ||
             `${String(user?.firstName ?? '').trim()} ${String(user?.lastName ?? '').trim()}`.trim();
-        const initials = displayName ? displayName.split(' ').map((p) => p.charAt(0)).join('.') : null;
+        const displayName = isNameVisible ? resolvedName : 'Anonymous Patient';
+        const initials = isNameVisible
+            ? displayName
+                ? displayName.split(' ').map((p) => p.charAt(0)).join('.')
+                : null
+            : 'A.P';
         return {
             sessionId: String(session.id),
             bookingReferenceId: session.bookingReferenceId,
@@ -363,12 +363,15 @@ const getMyTherapistSessionDetail = async (userId, sessionId) => {
     const user = patientProfile
         ? await db.user.findUnique({
             where: { id: String(patientProfile.userId) },
-            select: { name: true, email: true, firstName: true, lastName: true },
+            select: { name: true, email: true, firstName: true, lastName: true, showNameToProviders: true },
         })
         : null;
-    const patientName = String(user?.name ?? '').trim() ||
-        `${String(user?.firstName ?? '').trim()} ${String(user?.lastName ?? '').trim()}`.trim() ||
-        null;
+    const isNameVisible = user?.showNameToProviders !== false;
+    const patientName = isNameVisible
+        ? String(user?.name ?? '').trim() ||
+            `${String(user?.firstName ?? '').trim()} ${String(user?.lastName ?? '').trim()}`.trim() ||
+            null
+        : 'Anonymous Patient';
     const responses = await db_1.prisma.patientSessionResponse.findMany({
         where: { sessionId: String(session.id) },
         orderBy: { answeredAt: 'asc' },
@@ -404,7 +407,7 @@ const getMyTherapistSessionDetail = async (userId, sessionId) => {
         patient: {
             id: patientProfile?.id ? String(patientProfile.id) : null,
             name: patientName,
-            email: user?.email ?? null,
+            email: isNameVisible ? user?.email ?? null : null,
             age: patientProfile?.age ?? null,
             gender: patientProfile?.gender ?? null,
         },
@@ -566,8 +569,76 @@ const getMyTherapistSessionNoteDecrypted = async (userId, sessionId) => {
 };
 exports.getMyTherapistSessionNoteDecrypted = getMyTherapistSessionNoteDecrypted;
 const getMyTherapistEarnings = async (userId, query) => {
-    void userId;
-    void query;
-    throw new error_middleware_1.AppError('Therapist earnings endpoint is unavailable until therapist pricing metadata is fully migrated to Prisma', 501);
+    await assertTherapistUser(userId);
+    const now = new Date();
+    const start = query.fromDate ? new Date(query.fromDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = query.toDate ? new Date(query.toDate) : now;
+    const sessions = await db_1.prisma.therapySession.findMany({
+        where: {
+            therapistProfileId: String(userId),
+            dateTime: { gte: start, lte: end },
+            status: 'COMPLETED',
+            paymentStatus: { in: ['PAID', 'CAPTURED'] },
+        },
+        orderBy: { dateTime: 'desc' },
+        select: {
+            id: true,
+            dateTime: true,
+            sessionFeeMinor: true,
+            paymentStatus: true,
+            bookingReferenceId: true,
+        },
+    });
+    const toMinor = (value) => {
+        if (typeof value === 'bigint')
+            return Number(value);
+        if (typeof value === 'number')
+            return value;
+        if (typeof value === 'string')
+            return Number(value);
+        return 0;
+    };
+    const grossMinor = sessions.reduce((sum, row) => sum + toMinor(row.sessionFeeMinor), 0);
+    const therapistShareMinor = Math.round(grossMinor * 0.6);
+    const platformShareMinor = Math.round(grossMinor * 0.4);
+    const monthKeys = Array.from({ length: 6 }, (_, index) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+        return {
+            key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+            label: d.toLocaleDateString('en-US', { month: 'short' }),
+        };
+    });
+    const chartMap = new Map();
+    for (const mk of monthKeys)
+        chartMap.set(mk.key, 0);
+    for (const row of sessions) {
+        const d = new Date(row.dateTime);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!chartMap.has(key))
+            continue;
+        chartMap.set(key, (chartMap.get(key) || 0) + toMinor(row.sessionFeeMinor));
+    }
+    return {
+        summary: {
+            fromDate: start,
+            toDate: end,
+            sessionsCompleted: sessions.length,
+            grossMinor,
+            therapistShareMinor,
+            platformShareMinor,
+        },
+        chart: {
+            labels: monthKeys.map((mk) => mk.label),
+            therapistShare: monthKeys.map((mk) => Math.round((chartMap.get(mk.key) || 0) * 0.6)),
+            platformShare: monthKeys.map((mk) => Math.round((chartMap.get(mk.key) || 0) * 0.4)),
+        },
+        items: sessions.map((row) => ({
+            id: String(row.id),
+            bookingReferenceId: row.bookingReferenceId,
+            dateTime: row.dateTime,
+            amountMinor: Math.round(toMinor(row.sessionFeeMinor) * 0.6),
+            status: String(row.paymentStatus).toLowerCase(),
+        })),
+    };
 };
 exports.getMyTherapistEarnings = getMyTherapistEarnings;

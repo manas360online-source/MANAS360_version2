@@ -3,7 +3,7 @@ type Resp<T> = { data: T };
 const configuredBase =
 	import.meta.env.VITE_API_BASE_URL?.trim() ||
 	import.meta.env.VITE_API_URL?.trim() ||
-	'http://localhost:5001/api';
+	'http://localhost:3000/api';
 
 const joinUrl = (path: string): string => {
 	if (path.startsWith('http://') || path.startsWith('https://')) return path;

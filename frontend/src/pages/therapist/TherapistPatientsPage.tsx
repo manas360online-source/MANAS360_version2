@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { therapistApi, type TherapistPatientItem } from '../../api/therapist.api';
 import TherapistBadge from '../../components/therapist/dashboard/TherapistBadge';
+import TherapistButton from '../../components/therapist/dashboard/TherapistButton';
 import TherapistCard from '../../components/therapist/dashboard/TherapistCard';
 import {
   TherapistEmptyState,
@@ -12,6 +14,7 @@ import TherapistPageShell from '../../components/therapist/dashboard/TherapistPa
 import TherapistTable from '../../components/therapist/dashboard/TherapistTable';
 
 export default function TherapistPatientsPage() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<TherapistPatientItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,6 +97,22 @@ export default function TherapistPatientsPage() {
                     label={row.status}
                     variant={row.status === 'Active' ? 'success' : row.status === 'New' ? 'sage' : 'warning'}
                   />
+                ),
+              },
+              {
+                key: 'actions',
+                header: 'Actions',
+                className: 'text-right',
+                render: (row) => (
+                  <div className="flex justify-end">
+                    <TherapistButton
+                      variant="secondary"
+                      className="min-h-[34px] px-3 py-1 text-xs"
+                      onClick={() => navigate(`/therapist/dashboard?patientId=${encodeURIComponent(row.id)}`)}
+                    >
+                      View Mood Insights
+                    </TherapistButton>
+                  </div>
                 ),
               },
             ]}

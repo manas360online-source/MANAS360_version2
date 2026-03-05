@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.env = void 0;
 const parseNodeEnv = (value) => {
-    if (value === 'development' || value === 'test' || value === 'production') {
+    if (value === 'development' || value === 'test' || value === 'production' || value === 'staging') {
         return value;
     }
     return 'development';
@@ -12,7 +12,7 @@ const parsePort = (value) => {
     if (Number.isInteger(parsedPort) && parsedPort > 0 && parsedPort <= 65535) {
         return parsedPort;
     }
-    return 5001;
+    return 3000;
 };
 const parseBoolean = (value, fallback = false) => {
     if (value === undefined) {
@@ -28,7 +28,7 @@ const parseNumber = (value, fallback) => {
     return fallback;
 };
 const parseCorsOrigins = (value) => {
-    const raw = value ?? 'http://localhost:3000';
+    const raw = value ?? 'http://localhost:5173';
     return raw
         .split(',')
         .map((origin) => origin.trim())

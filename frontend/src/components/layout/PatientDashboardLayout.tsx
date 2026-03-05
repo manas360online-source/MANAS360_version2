@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   Bell,
   CalendarDays,
-  CreditCard,
   FileText,
   HeartPulse,
   Home,
@@ -11,6 +10,7 @@ import {
   Menu,
   MessageSquare,
   Search,
+  Settings2,
   Sparkles,
   User,
   X,
@@ -26,17 +26,16 @@ const mainNavItems = [
 ];
 
 const wellnessNavItems = [
-  { to: '/patient/messages', label: 'AnytimeBuddy', icon: MessageSquare, badge: 'AI' },
+  { to: '/patient/messages', label: 'Dr. Meera', icon: MessageSquare, badge: 'AI' },
   { to: '/patient/assessments', label: 'CBT Exercises', icon: FileText },
-  { to: '/patient/dashboard', label: 'Mood Tracker', icon: HeartPulse },
-  { to: '/patient/dashboard', label: 'My Progress', icon: Sparkles },
+  { to: '/patient/mood', label: 'Mood Tracker', icon: HeartPulse },
+  { to: '/patient/progress', label: 'My Progress', icon: Sparkles },
   { to: '/patient/support', label: 'Sound Therapy', icon: LifeBuoy },
+  { to: '/patient/support', label: 'Group Sessions', icon: CalendarDays },
 ];
 
-const accountNavItems = [
-  { to: '/patient/billing', label: 'Subscription', icon: CreditCard, badge: 'Premium' },
-  { to: '/patient/billing', label: 'Payment History', icon: CreditCard },
-  { to: '/patient/profile', label: 'Settings', icon: User },
+const supportNavItems = [
+  { to: '/crisis', label: 'Crisis Support', icon: LifeBuoy },
   { to: '/patient/support', label: 'Help Center', icon: LifeBuoy },
 ];
 
@@ -45,7 +44,7 @@ const bottomNavItems = [
   { to: '/patient/sessions', label: 'Sessions', icon: CalendarDays },
   { to: '/patient/providers', label: 'Find Therapist', icon: Search },
   { to: '/patient/messages', label: 'Messages', icon: MessageSquare },
-  { to: '/patient/profile', label: 'Profile', icon: User },
+  { to: '/patient/settings', label: 'Settings', icon: User },
 ];
 
 type NavItem = {
@@ -60,6 +59,7 @@ export default function PatientDashboardLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   const userName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim() || user?.email || 'Patient';
   const initials = userName
@@ -89,7 +89,7 @@ export default function PatientDashboardLayout() {
   }, [location.pathname]);
 
   useEffect(() => {
-    if (mobileSidebarOpen) {
+    if (mobileSidebarOpen || profileMenuOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -98,11 +98,20 @@ export default function PatientDashboardLayout() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [mobileSidebarOpen]);
+  }, [mobileSidebarOpen, profileMenuOpen]);
+
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const onEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setProfileMenuOpen(false);
+    };
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [profileMenuOpen]);
 
   const renderNavSection = (heading: string, items: NavItem[]) => (
     <div>
-      <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-charcoal/45">{heading}</p>
+      <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.15em] text-ink-400">{heading}</p>
       <div className="space-y-1">
         {items.map((item) => {
           const Icon = item.icon;
@@ -114,11 +123,11 @@ export default function PatientDashboardLayout() {
               to={item.to}
               className={`flex min-h-[42px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
                 active
-                  ? 'bg-[#E8EFE6] font-semibold text-charcoal'
-                  : 'text-charcoal/75 hover:bg-calm-sage/10 hover:text-charcoal'
+                  ? 'bg-[#E8EFE6] font-semibold text-sage-700'
+                  : 'text-ink-600 hover:bg-surface-hover hover:text-ink-700'
               }`}
             >
-              <Icon className={`h-[18px] w-[18px] ${active ? 'text-calm-sage' : 'text-charcoal/50'}`} />
+              <Icon className={`h-[18px] w-[18px] ${active ? 'text-sage-500' : 'text-ink-400'}`} />
               <span>{item.label}</span>
               {item.badge && (
                 <span
@@ -157,7 +166,7 @@ export default function PatientDashboardLayout() {
           }`}
         >
           <div className="flex h-16 items-center justify-between border-b border-calm-sage/15 px-5">
-            <Link to="/patient/dashboard" className="inline-flex items-center gap-2 text-lg font-serif font-semibold text-calm-sage">
+            <Link to="/patient/dashboard" className="inline-flex items-center gap-2 font-display text-lg font-bold text-sage-800">
               <img
                 src="/Untitled.png"
                 alt="MANAS360 logo"
@@ -179,7 +188,7 @@ export default function PatientDashboardLayout() {
           <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4" aria-label="Patient dashboard navigation">
             {renderNavSection('Main', mainNavItems)}
             {renderNavSection('Wellness Tools', wellnessNavItems)}
-            {renderNavSection('Account', accountNavItems)}
+            {renderNavSection('Support', supportNavItems)}
           </nav>
 
           <div className="border-t border-calm-sage/15 p-4">
@@ -204,7 +213,7 @@ export default function PatientDashboardLayout() {
         </aside>
 
         <div className="flex min-h-screen w-full flex-1 flex-col lg:ml-0">
-          <header className="sticky top-0 z-30 flex h-16 items-center border-b border-calm-sage/15 bg-white/85 px-3 backdrop-blur-sm sm:px-4 lg:px-6">
+          <header className="sticky top-0 z-30 flex h-16 items-center border-b border-ink-100 bg-white/80 px-3 backdrop-blur-lg sm:px-4 lg:px-6">
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 type="button"
@@ -215,14 +224,16 @@ export default function PatientDashboardLayout() {
                 <Menu className="h-5 w-5" />
               </button>
 
-              <div>
-                <p className="font-serif text-lg font-semibold text-charcoal">Dashboard</p>
-                <p className="hidden text-[11px] text-charcoal/55 sm:block">{todayLabel}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-display text-lg font-bold leading-none text-ink-800">Dashboard</p>
+                <p className="-mt-0.5 hidden text-[11px] leading-none text-ink-400 sm:block">{todayLabel}</p>
               </div>
+            </div>
 
-              <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <div className="ml-auto flex items-center gap-2 sm:gap-3">
                 <button
                   type="button"
+                  onClick={() => navigate('/crisis')}
                   className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 transition hover:bg-red-100"
                 >
                   <LifeBuoy className="h-4 w-4" />
@@ -232,7 +243,7 @@ export default function PatientDashboardLayout() {
 
                 <Link
                   to="/patient/notifications"
-                  className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-charcoal/60 transition hover:bg-calm-sage/10"
+                  className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 transition hover:bg-ink-50"
                   aria-label="Open notifications"
                 >
                   <Bell className="h-4 w-4" />
@@ -249,15 +260,16 @@ export default function PatientDashboardLayout() {
                   <LogOut className="h-4 w-4" />
                 </button>
 
-                <Link
-                  to="/patient/profile"
+                <button
+                  type="button"
+                  onClick={() => setProfileMenuOpen(true)}
                   className="inline-flex items-center gap-2 rounded-lg p-1 pr-2 transition hover:bg-calm-sage/10"
+                  aria-label="Open profile menu"
                 >
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-warm-terracotta/25 text-xs font-semibold text-warm-terracotta">
                     {initials}
                   </div>
-                </Link>
-              </div>
+                </button>
             </div>
           </header>
 
@@ -287,6 +299,81 @@ export default function PatientDashboardLayout() {
           })}
         </div>
       </nav>
+
+      {profileMenuOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-start justify-end bg-charcoal/20 p-3 pt-16 backdrop-blur-sm sm:p-4 sm:pt-20"
+          onClick={() => setProfileMenuOpen(false)}
+        >
+          <div
+            className="w-full max-w-xs rounded-2xl border border-calm-sage/20 bg-[#F5F3F0]/95 p-3 shadow-soft-sm"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Profile menu"
+          >
+            <div className="mb-2 flex items-center gap-3 rounded-xl bg-white/85 px-3 py-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-warm-terracotta/25 text-xs font-semibold text-warm-terracotta">
+                {initials}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-charcoal">{userName}</p>
+                <p className="text-[11px] text-charcoal/55">Patient Account</p>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  navigate('/patient/profile');
+                }}
+                className="flex min-h-[42px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-charcoal/80 transition hover:bg-calm-sage/10 hover:text-charcoal"
+              >
+                <User className="h-[18px] w-[18px] text-charcoal/50" />
+                <span>My Profile</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  navigate('/patient/settings');
+                }}
+                className="flex min-h-[42px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-charcoal/80 transition hover:bg-calm-sage/10 hover:text-charcoal"
+              >
+                <Settings2 className="h-[18px] w-[18px] text-charcoal/50" />
+                <span>Settings</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  navigate('/patient/support');
+                }}
+                className="flex min-h-[42px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-charcoal/80 transition hover:bg-calm-sage/10 hover:text-charcoal"
+              >
+                <LifeBuoy className="h-[18px] w-[18px] text-charcoal/50" />
+                <span>Help & Support</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setProfileMenuOpen(false);
+                  void handleLogout();
+                }}
+                className="flex min-h-[42px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-charcoal/80 transition hover:bg-calm-sage/10 hover:text-charcoal"
+              >
+                <LogOut className="h-[18px] w-[18px] text-charcoal/50" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

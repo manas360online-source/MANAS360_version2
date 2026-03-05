@@ -12,7 +12,7 @@ info:
 servers:
   - url: https://api.manas360.com/api/v1/admin
     description: Production server
-  - url: http://localhost:3000/api/v1/admin
+  - url: http://localhost:5000/api/v1/admin
     description: Development server
 
 components:

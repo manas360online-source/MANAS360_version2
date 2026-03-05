@@ -7,8 +7,11 @@ import {
 	cancelPatientSubscription,
 	completePatientExercise,
 	createMoodLog,
+	getMoodToday,
+	getMoodStats,
 	getPatientExercises,
 	getMoodHistory,
+	getPatientProgressAnalytics,
 	getPatientDashboard,
 	getPatientInvoiceById,
 	getPatientInvoices,
@@ -23,6 +26,10 @@ import {
 	listNotifications,
 	listProviders,
 	markNotificationRead,
+	getPatientSettings,
+	updatePatientSettings,
+	getPatientSupportCenter,
+	createPatientSupportTicket,
 	reactivatePatientSubscription,
 	setPatientSubscriptionAutoRenew,
 	submitAssessment,
@@ -256,6 +263,34 @@ export const markNotificationReadController = async (req: Request, res: Response
 	sendSuccess(res, data, 'Notification marked as read');
 };
 
+export const getPatientSettingsController = async (req: Request, res: Response): Promise<void> => {
+	const data = await getPatientSettings(authUserId(req));
+	sendSuccess(res, data, 'Patient settings fetched');
+};
+
+export const updatePatientSettingsController = async (req: Request, res: Response): Promise<void> => {
+	const userId = authUserId(req);
+	const settings = req.body?.settings;
+	const data = await updatePatientSettings(userId, settings);
+	sendSuccess(res, data, 'Patient settings saved');
+};
+
+export const getPatientSupportCenterController = async (req: Request, res: Response): Promise<void> => {
+	const data = await getPatientSupportCenter(authUserId(req));
+	sendSuccess(res, data, 'Support center data fetched');
+};
+
+export const createPatientSupportTicketController = async (req: Request, res: Response): Promise<void> => {
+	const userId = authUserId(req);
+	const data = await createPatientSupportTicket(userId, {
+		subject: String(req.body?.subject || ''),
+		message: String(req.body?.message || ''),
+		category: req.body?.category ? String(req.body.category) : undefined,
+		priority: req.body?.priority ? String(req.body.priority) : undefined,
+	});
+	sendSuccess(res, data, 'Support ticket created', 201);
+};
+
 export const getPatientSubscriptionController = async (req: Request, res: Response): Promise<void> => {
 	const data = await getPatientSubscription(authUserId(req));
 	sendSuccess(res, data, 'Subscription fetched');
@@ -326,6 +361,21 @@ export const downloadPatientInvoiceController = async (req: Request, res: Respon
 export const getPatientMoodController = async (req: Request, res: Response): Promise<void> => {
 	const data = await getMoodHistory(authUserId(req));
 	sendSuccess(res, data, 'Mood history fetched');
+};
+
+export const getPatientMoodTodayController = async (req: Request, res: Response): Promise<void> => {
+	const data = await getMoodToday(authUserId(req));
+	sendSuccess(res, data, 'Today mood fetched');
+};
+
+export const getPatientMoodStatsController = async (req: Request, res: Response): Promise<void> => {
+	const data = await getMoodStats(authUserId(req));
+	sendSuccess(res, data, 'Mood stats fetched');
+};
+
+export const getPatientProgressController = async (req: Request, res: Response): Promise<void> => {
+	const data = await getPatientProgressAnalytics(authUserId(req));
+	sendSuccess(res, data, 'Patient progress fetched');
 };
 
 export const createPatientMoodController = async (req: Request, res: Response): Promise<void> => {

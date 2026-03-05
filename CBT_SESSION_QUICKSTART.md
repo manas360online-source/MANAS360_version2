@@ -63,7 +63,7 @@ npm run build && npm start
 ### Create a CBT Template
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/cbt-sessions/templates \
+curl -X POST http://localhost:5000/api/v1/cbt-sessions/templates \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -92,7 +92,7 @@ Response:
 ### Add Questions to Template
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/cbt-sessions/templates/tpl_abc123/questions \
+curl -X POST http://localhost:5000/api/v1/cbt-sessions/templates/tpl_abc123/questions \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -115,7 +115,7 @@ curl -X POST http://localhost:3000/api/v1/cbt-sessions/templates/tpl_abc123/ques
 
 ```bash
 # First, create the follow-up question
-curl -X POST http://localhost:3000/api/v1/cbt-sessions/templates/tpl_abc123/questions \
+curl -X POST http://localhost:5000/api/v1/cbt-sessions/templates/tpl_abc123/questions \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -128,7 +128,7 @@ curl -X POST http://localhost:3000/api/v1/cbt-sessions/templates/tpl_abc123/ques
 # Response: question with id "q_2"
 
 # Create branching rule
-curl -X POST http://localhost:3000/api/v1/cbt-sessions/branching-rules \
+curl -X POST http://localhost:5000/api/v1/cbt-sessions/branching-rules \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -142,14 +142,14 @@ curl -X POST http://localhost:3000/api/v1/cbt-sessions/branching-rules \
 ### Publish Template
 
 ```bash
-curl -X PUT http://localhost:3000/api/v1/cbt-sessions/templates/tpl_abc123/publish \
+curl -X PUT http://localhost:5000/api/v1/cbt-sessions/templates/tpl_abc123/publish \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
 ### Patient Starts Session
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/cbt-sessions/start \
+curl -X POST http://localhost:5000/api/v1/cbt-sessions/start \
   -H "Authorization: Bearer PATIENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -174,7 +174,7 @@ curl -X POST http://localhost:3000/api/v1/cbt-sessions/start \
 ### Patient Responds to Question
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/cbt-sessions/sess_xyz789/respond \
+curl -X POST http://localhost:5000/api/v1/cbt-sessions/sess_xyz789/respond \
   -H "Authorization: Bearer PATIENT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -201,7 +201,7 @@ curl -X POST http://localhost:3000/api/v1/cbt-sessions/sess_xyz789/respond \
 ### Get Session Summary
 
 ```bash
-curl -X GET http://localhost:3000/api/v1/cbt-sessions/sess_xyz789/summary \
+curl -X GET http://localhost:5000/api/v1/cbt-sessions/sess_xyz789/summary \
   -H "Authorization: Bearer YOUR_TOKEN"
 
 # Response includes all responses with timestamps, time spent per question, etc.
@@ -211,17 +211,17 @@ curl -X GET http://localhost:3000/api/v1/cbt-sessions/sess_xyz789/summary \
 
 ```bash
 # Export as PDF
-curl -X POST http://localhost:3000/api/v1/cbt-sessions/sess_xyz789/export/pdf \
+curl -X POST http://localhost:5000/api/v1/cbt-sessions/sess_xyz789/export/pdf \
   -H "Authorization: Bearer YOUR_TOKEN" \
   --output session.pdf
 
 # Export as CSV
-curl -X POST http://localhost:3000/api/v1/cbt-sessions/sess_xyz789/export/csv \
+curl -X POST http://localhost:5000/api/v1/cbt-sessions/sess_xyz789/export/csv \
   -H "Authorization: Bearer YOUR_TOKEN" \
   --output session.csv
 
 # Export as JSON
-curl -X POST http://localhost:3000/api/v1/cbt-sessions/sess_xyz789/export/json \
+curl -X POST http://localhost:5000/api/v1/cbt-sessions/sess_xyz789/export/json \
   -H "Authorization: Bearer YOUR_TOKEN" \
   --output session.json
 ```
@@ -229,7 +229,7 @@ curl -X POST http://localhost:3000/api/v1/cbt-sessions/sess_xyz789/export/json \
 ### Get Question Analytics
 
 ```bash
-curl -X GET http://localhost:3000/api/v1/cbt-sessions/questions/q_1/analytics \
+curl -X GET http://localhost:5000/api/v1/cbt-sessions/questions/q_1/analytics \
   -H "Authorization: Bearer THERAPIST_TOKEN"
 
 # Response:
@@ -254,7 +254,7 @@ curl -X GET http://localhost:3000/api/v1/cbt-sessions/questions/q_1/analytics \
 ### Get Template Statistics
 
 ```bash
-curl -X GET http://localhost:3000/api/v1/cbt-sessions/templates/tpl_abc123/stats \
+curl -X GET http://localhost:5000/api/v1/cbt-sessions/templates/tpl_abc123/stats \
   -H "Authorization: Bearer THERAPIST_TOKEN"
 
 # Response:

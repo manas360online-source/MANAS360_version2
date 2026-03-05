@@ -60,7 +60,7 @@ router.get('/subscriptions',
 
 **Request**:
 ```bash
-curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
+curl -X GET "http://localhost:5000/api/v1/admin/users?page=1&limit=10" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -H "Content-Type: application/json"
 ```
@@ -100,7 +100,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
 
 **Request**:
 ```bash
-curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
+curl -X GET "http://localhost:5000/api/v1/admin/users?page=1&limit=10" \
   -H "Content-Type: application/json"
 # No Authorization header
 ```
@@ -126,7 +126,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
 
 **Request**:
 ```bash
-curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
+curl -X GET "http://localhost:5000/api/v1/admin/users?page=1&limit=10" \
   -H "Authorization: Bearer invalid.token.structure" \
   -H "Content-Type: application/json"
 ```
@@ -153,7 +153,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
 **Request**:
 ```bash
 # Assume patient_token is a valid JWT with role='patient'
-curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
+curl -X GET "http://localhost:5000/api/v1/admin/users?page=1&limit=10" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyMTIzIiwicm9sZSI6InBhdGllbnQifQ..." \
   -H "Content-Type: application/json"
 ```
@@ -180,7 +180,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
 
 **Request**:
 ```bash
-curl -X PATCH "http://localhost:3000/api/v1/admin/therapists/507f1f77bcf86cd799439011/verify" \
+curl -X PATCH "http://localhost:5000/api/v1/admin/therapists/507f1f77bcf86cd799439011/verify" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0aGVyYXBpc3QxMjMiLCJyb2xlIjoidGhlcmFwaXN0In0..." \
   -H "Content-Type: application/json"
 ```
@@ -207,7 +207,7 @@ curl -X PATCH "http://localhost:3000/api/v1/admin/therapists/507f1f77bcf86cd7994
 **Request**:
 ```bash
 # Admin account still has valid JWT but account is deleted
-curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
+curl -X GET "http://localhost:5000/api/v1/admin/users?page=1&limit=10" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbjEyMyIsInJvbGUiOiJhZG1pbiJ9..." \
   -H "Content-Type: application/json"
 ```
@@ -234,7 +234,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
 
 **Request**:
 ```bash
-curl -X GET "http://localhost:3000/api/v1/admin/users/invalid-id-123" \
+curl -X GET "http://localhost:5000/api/v1/admin/users/invalid-id-123" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -H "Content-Type: application/json"
 ```
@@ -262,7 +262,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/users/invalid-id-123" \
 
 **Request**:
 ```bash
-curl -X GET "http://localhost:3000/api/v1/admin/users?page=abc&limit=100&role=invalid" \
+curl -X GET "http://localhost:5000/api/v1/admin/users?page=abc&limit=100&role=invalid" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -H "Content-Type: application/json"
 ```
@@ -294,7 +294,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/users?page=abc&limit=100&role=in
 
 **Request**:
 ```bash
-curl -X GET "http://localhost:3000/api/v1/admin/metrics" \
+curl -X GET "http://localhost:5000/api/v1/admin/metrics" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -H "Content-Type: application/json"
 ```
@@ -324,7 +324,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/metrics" \
 
 **Request**:
 ```bash
-curl -X PATCH "http://localhost:3000/api/v1/admin/therapists/507f1f77bcf86cd799439011/verify" \
+curl -X PATCH "http://localhost:5000/api/v1/admin/therapists/507f1f77bcf86cd799439011/verify" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
   -H "Content-Type: application/json"
 ```
@@ -352,7 +352,7 @@ curl -X PATCH "http://localhost:3000/api/v1/admin/therapists/507f1f77bcf86cd7994
 ### Get Logged-In User
 ```bash
 # Get admin token (requires login via /auth/login)
-ADMIN_TOKEN=$(curl -s -X POST "http://localhost:3000/api/v1/auth/login" \
+ADMIN_TOKEN=$(curl -s -X POST "http://localhost:5000/api/v1/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@example.com",
@@ -364,7 +364,7 @@ echo "Admin token: $ADMIN_TOKEN"
 
 ### List All Users
 ```bash
-curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
+curl -X GET "http://localhost:5000/api/v1/admin/users?page=1&limit=10" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" | jq .
 ```
@@ -373,14 +373,14 @@ curl -X GET "http://localhost:3000/api/v1/admin/users?page=1&limit=10" \
 ```bash
 USER_ID="507f1f77bcf86cd799439011"
 
-curl -X GET "http://localhost:3000/api/v1/admin/users/$USER_ID" \
+curl -X GET "http://localhost:5000/api/v1/admin/users/$USER_ID" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" | jq .
 ```
 
 ### List Therapists with Filters
 ```bash
-curl -X GET "http://localhost:3000/api/v1/admin/users?role=therapist&status=active&page=1&limit=20" \
+curl -X GET "http://localhost:5000/api/v1/admin/users?role=therapist&status=active&page=1&limit=20" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" | jq .
 ```
@@ -389,21 +389,21 @@ curl -X GET "http://localhost:3000/api/v1/admin/users?role=therapist&status=acti
 ```bash
 THERAPIST_ID="507f1f77bcf86cd799439011"
 
-curl -X PATCH "http://localhost:3000/api/v1/admin/therapists/$THERAPIST_ID/verify" \
+curl -X PATCH "http://localhost:5000/api/v1/admin/therapists/$THERAPIST_ID/verify" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" | jq .
 ```
 
 ### Get Platform Metrics
 ```bash
-curl -X GET "http://localhost:3000/api/v1/admin/metrics" \
+curl -X GET "http://localhost:5000/api/v1/admin/metrics" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" | jq .
 ```
 
 ### List Subscriptions with Filters
 ```bash
-curl -X GET "http://localhost:3000/api/v1/admin/subscriptions?planType=premium&status=active&page=1&limit=25" \
+curl -X GET "http://localhost:5000/api/v1/admin/subscriptions?planType=premium&status=active&page=1&limit=25" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" | jq .
 ```
@@ -411,7 +411,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/subscriptions?planType=premium&s
 ### Test Unauthorized Access (With Patient Token)
 ```bash
 # Get patient token
-PATIENT_TOKEN=$(curl -s -X POST "http://localhost:3000/api/v1/auth/login" \
+PATIENT_TOKEN=$(curl -s -X POST "http://localhost:5000/api/v1/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "patient@example.com",
@@ -419,7 +419,7 @@ PATIENT_TOKEN=$(curl -s -X POST "http://localhost:3000/api/v1/auth/login" \
   }' | jq -r '.data.token')
 
 # Try to access admin endpoint (should fail)
-curl -X GET "http://localhost:3000/api/v1/admin/users" \
+curl -X GET "http://localhost:5000/api/v1/admin/users" \
   -H "Authorization: Bearer $PATIENT_TOKEN" \
   -H "Content-Type: application/json" | jq .
 # Expected: 403 Forbidden with message about insufficient role
@@ -433,7 +433,7 @@ curl -X GET "http://localhost:3000/api/v1/admin/users" \
 ```typescript
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:3000/api/v1';
+const API_BASE = 'http://localhost:5000/api/v1';
 let adminToken = '';
 
 // Login as admin
@@ -523,7 +523,7 @@ async function getSubscriptions(planType?: string, status?: string) {
 
 ### Using Fetch API
 ```typescript
-const API_BASE = 'http://localhost:3000/api/v1';
+const API_BASE = 'http://localhost:5000/api/v1';
 let adminToken = '';
 
 async function loginAdmin() {
@@ -586,7 +586,7 @@ endpoints=(
 )
 
 for endpoint in "${endpoints[@]}"; do
-  response=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000${endpoint}")
+  response=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:5000${endpoint}")
   if [ "$response" = "401" ]; then
     echo "✅ $endpoint - Requires authentication"
   else
@@ -600,7 +600,7 @@ done
 #!/bin/bash
 
 # Get patient token
-PATIENT_TOKEN=$(curl -s -X POST "http://localhost:3000/api/v1/auth/login" \
+PATIENT_TOKEN=$(curl -s -X POST "http://localhost:5000/api/v1/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"email":"patient@example.com","password":"password123"}' \
   | jq -r '.data.token')
@@ -617,7 +617,7 @@ endpoints=(
 for endpoint in "${endpoints[@]}"; do
   response=$(curl -s \
     -H "Authorization: Bearer $PATIENT_TOKEN" \
-    "http://localhost:3000${endpoint}" | jq -r '.statusCode')
+    "http://localhost:5000${endpoint}" | jq -r '.statusCode')
   if [ "$response" = "403" ]; then
     echo "✅ $endpoint - Correctly returns 403 for patient"
   else

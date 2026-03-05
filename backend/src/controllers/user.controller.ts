@@ -4,6 +4,7 @@ import {
 	changeMyPassword,
 	getMyProfile,
 	invalidateMySession,
+	invalidateAllMySessions,
 	listMyActiveSessions,
 	softDeleteMyAccount,
 	updateMyProfile,
@@ -88,5 +89,12 @@ export const deleteMySessionController = async (req: Request, res: Response): Pr
 	await invalidateMySession(userId, String(req.params.id));
 
 	sendSuccess(res, null, 'Session invalidated successfully');
+};
+
+export const deleteMySessionsController = async (req: Request, res: Response): Promise<void> => {
+	const userId = getAuthUserId(req);
+	const result = await invalidateAllMySessions(userId);
+
+	sendSuccess(res, result, 'All sessions invalidated successfully');
 };
 

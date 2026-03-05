@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MANAS360 — Patient Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        sage: { 50:'#f0f5ee', 100:'#E8EFE6', 200:'#c5d6bf', 300:'#a2bd99', 400:'#7fa473', 500:'#4A6741', 600:'#3d5636', 700:'#2D4128', 800:'#1e2c1b', 900:'#0f160d' },
+        clay: { 50:'#fdf6ef', 100:'#f7e8d5', 200:'#E8CDB5', 300:'#d4a87a', 400:'#C4956A', 500:'#B8654A', 600:'#9a4e38', 700:'#7c3b2b' },
+        ink: { 50:'#f5f5f5', 100:'#e5e5e5', 200:'#d4d4d4', 300:'#a3a3a3', 400:'#9A9A9A', 500:'#6B6B6B', 600:'#525252', 700:'#3D3D3D', 800:'#1A1A1A' },
+        surface: { bg:'#FAFAF8', card:'#FFFFFF', sidebar:'#F5F3F0', hover:'#EFEDE9' }
+      },
+      fontFamily: { display: ['Outfit','sans-serif'], body: ['DM Sans','sans-serif'] }
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: 'DM Sans', sans-serif; }
+  h1,h2,h3,h4,h5,h6,.font-display { font-family: 'Outfit', sans-serif; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #d4d4d4; border-radius: 3px; }
+  .sidebar-link { transition: all 0.2s ease; }
+  .sidebar-link:hover { background: #EFEDE9; }
+  .sidebar-link.active { background: #E8EFE6; color: #2D4128; font-weight: 600; }
+  .sidebar-link.active .sidebar-icon { color: #4A6741; }
+  .dash-card { transition: box-shadow 0.3s ease, transform 0.3s ease; }
+  .dash-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.06); transform: translateY(-2px); }
+  @media (max-width: 1023px) {
+    #sidebar { transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.22,1,0.36,1); }
+    #sidebar.open { transform: translateX(0); }
+    #sidebar-overlay { opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+    #sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+  }
+  @keyframes notifPulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+  .notif-dot { animation: notifPulse 2s ease infinite; }
+  .mood-btn { transition: all 0.2s; }
+  .mood-btn:hover { transform: scale(1.15); }
+  .mood-btn.selected { transform: scale(1.2); box-shadow: 0 0 0 3px #E8EFE6; }
+  .progress-ring { transition: stroke-dashoffset 1s ease; }
+</style>
+</head>
+<body class="bg-surface-bg text-ink-800 antialiased">
+
+<!-- Sidebar overlay (mobile) -->
+<div id="sidebar-overlay" class="fixed inset-0 bg-black/30 z-40 lg:hidden" onclick="toggleSidebar()"></div>
+
+<!-- ═══════════════════════════════════════════
+     SIDEBAR
+     ═══════════════════════════════════════════ -->
+<aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-surface-sidebar border-r border-ink-100 z-50 flex flex-col">
+  
+  <!-- Logo -->
+  <div class="h-16 px-5 flex items-center gap-3 border-b border-ink-100 shrink-0">
+    <div class="w-8 h-8 bg-sage-500 rounded-lg flex items-center justify-center">
+      <span class="text-white font-display font-bold text-sm">M</span>
+    </div>
+    <span class="font-display font-bold text-lg text-sage-800">MANAS360</span>
+  </div>
+
+  <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+    
+    <div class="px-3 mb-2">
+      <span class="text-[10px] font-semibold text-ink-400 uppercase tracking-[0.15em]">Main</span>
+    </div>
+    
+    <a href="#" class="sidebar-link active flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm">
+      <svg class="sidebar-icon w-[18px] h-[18px]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Dashboard
+    </a>
+    
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Assessment
+    </a>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Find Therapist
+    </a>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      My Sessions
+      <span class="ml-auto text-[11px] bg-sage-100 text-sage-700 px-1.5 py-0.5 rounded-full font-medium">1 upcoming</span>
+    </a>
+
+    <div class="px-3 mt-5 mb-2">
+      <span class="text-[10px] font-semibold text-ink-400 uppercase tracking-[0.15em]">Wellness Tools</span>
+    </div>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      AnytimeBuddy
+      <span class="ml-auto text-[10px] bg-sage-500 text-white px-1.5 py-0.5 rounded-full font-medium">AI</span>
+    </a>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      CBT Exercises
+    </a>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+      Mood Tracker
+    </a>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      My Progress
+    </a>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      Sound Therapy
+    </a>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Group Sessions
+    </a>
+
+    <div class="px-3 mt-5 mb-2">
+      <span class="text-[10px] font-semibold text-ink-400 uppercase tracking-[0.15em]">Account</span>
+    </div>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+      Subscription
+      <span class="ml-auto text-[10px] bg-clay-50 text-clay-500 px-1.5 py-0.5 rounded-full font-medium">Premium</span>
+    </a>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Payment History
+    </a>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </a>
+
+    <a href="#" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-ink-600">
+      <svg class="sidebar-icon w-[18px] h-[18px] text-ink-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Help Center
+    </a>
+  </nav>
+
+  <!-- Profile Card -->
+  <div class="border-t border-ink-100 p-4 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full bg-clay-100 flex items-center justify-center text-clay-600 font-display font-bold text-sm">PK</div>
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-semibold text-ink-800 truncate">Priya Kumar</p>
+        <p class="text-[11px] text-ink-400">Premium · Since Jan 2026</p>
+      </div>
+      <button class="text-ink-400 hover:text-ink-600 transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+
+<!-- ═══════════════════════════════════════════
+     MAIN WRAPPER
+     ═══════════════════════════════════════════ -->
+<div class="lg:ml-64 min-h-screen flex flex-col">
+
+  <!-- TOPBAR -->
+  <header class="h-16 bg-white/80 backdrop-blur-lg border-b border-ink-100 flex items-center px-4 lg:px-6 sticky top-0 z-30">
+    <button class="lg:hidden mr-3 p-2 rounded-lg hover:bg-ink-50 transition" onclick="toggleSidebar()">
+      <svg class="w-5 h-5 text-ink-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <div>
+      <h1 class="font-display font-bold text-lg text-ink-800">Dashboard</h1>
+      <p class="text-[11px] text-ink-400 -mt-0.5 hidden sm:block">Tuesday, 3 March 2026</p>
+    </div>
+    <div class="ml-auto flex items-center gap-2 sm:gap-3">
+      <!-- Crisis Button — ALWAYS visible -->
+      <button class="flex items-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold px-3 py-2 rounded-lg transition">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        <span class="hidden sm:inline">Crisis Support</span>
+        <span class="sm:hidden">🆘</span>
+      </button>
+      
+      <!-- Notifications -->
+      <button class="relative p-2 rounded-lg hover:bg-ink-50 transition">
+        <svg class="w-5 h-5 text-ink-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full notif-dot"></span>
+      </button>
+      
+      <!-- Profile -->
+      <button class="flex items-center gap-2 p-1 pr-2 rounded-lg hover:bg-ink-50 transition">
+        <div class="w-8 h-8 rounded-full bg-clay-100 flex items-center justify-center text-clay-600 font-display font-bold text-xs">PK</div>
+        <svg class="w-3.5 h-3.5 text-ink-400 hidden sm:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════
+       MAIN CONTENT
+       ═══════════════════════════════════════ -->
+  <main class="flex-1 p-4 lg:p-6 max-w-[1400px] mx-auto w-full">
+
+    <!-- ═══ WELCOME + MOOD CHECK-IN ═══ -->
+    <div class="mb-6">
+      <h2 class="font-display text-2xl font-bold text-ink-800">Good morning, Priya 🌸</h2>
+      <p class="text-sm text-ink-500 mt-1">How are you feeling today?</p>
+      
+      <!-- Mood Selector -->
+      <div class="flex items-center gap-3 mt-4">
+        <button class="mood-btn w-12 h-12 rounded-xl bg-red-50 text-2xl flex items-center justify-center" onclick="selectMood(this, 'terrible')" title="Terrible">😢</button>
+        <button class="mood-btn w-12 h-12 rounded-xl bg-orange-50 text-2xl flex items-center justify-center" onclick="selectMood(this, 'bad')" title="Not great">😔</button>
+        <button class="mood-btn w-12 h-12 rounded-xl bg-yellow-50 text-2xl flex items-center justify-center" onclick="selectMood(this, 'okay')" title="Okay">😐</button>
+        <button class="mood-btn w-12 h-12 rounded-xl bg-lime-50 text-2xl flex items-center justify-center" onclick="selectMood(this, 'good')" title="Good">🙂</button>
+        <button class="mood-btn w-12 h-12 rounded-xl bg-green-50 text-2xl flex items-center justify-center selected" onclick="selectMood(this, 'great')" title="Great">😊</button>
+        <span class="text-xs text-ink-400 ml-2 hidden sm:block" id="mood-label">Feeling great today!</span>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div class="dash-card bg-white rounded-xl border border-ink-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-ink-400 uppercase tracking-wider">Wellness Score</span>
+          <div class="w-8 h-8 bg-sage-50 rounded-lg flex items-center justify-center">
+            <svg class="w-4 h-4 text-sage-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
+        </div>
+        <div class="flex items-end gap-2">
+          <span class="font-display text-3xl font-bold text-sage-600">72</span>
+          <span class="text-xs text-green-600 font-medium mb-1 flex items-center gap-0.5">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></svg>
+            +8
+          </span>
+        </div>
+        <div class="w-full h-1.5 bg-sage-100 rounded-full mt-3">
+          <div class="h-full bg-sage-500 rounded-full" style="width: 72%;"></div>
+        </div>
+      </div>
+
+      <div class="dash-card bg-white rounded-xl border border-ink-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-ink-400 uppercase tracking-wider">Sessions Done</span>
+          <div class="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center">
+            <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+          </div>
+        </div>
+        <div class="flex items-end gap-2">
+          <span class="font-display text-3xl font-bold text-ink-800">12</span>
+          <span class="text-xs text-ink-400 font-medium mb-1">of 16 planned</span>
+        </div>
+      </div>
+
+      <div class="dash-card bg-white rounded-xl border border-ink-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-ink-400 uppercase tracking-wider">Streak</span>
+          <div class="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center">
+            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 10 10-12h-9l1-10z"/></svg>
+          </div>
+        </div>
+        <div class="flex items-end gap-2">
+          <span class="font-display text-3xl font-bold text-ink-800">7</span>
+          <span class="text-xs text-amber-600 font-medium mb-1">days of mood tracking</span>
+        </div>
+      </div>
+
+      <div class="dash-card bg-white rounded-xl border border-ink-100 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-ink-400 uppercase tracking-wider">CBT Exercises</span>
+          <div class="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center">
+            <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          </div>
+        </div>
+        <div class="flex items-end gap-2">
+          <span class="font-display text-3xl font-bold text-ink-800">5</span>
+          <span class="text-xs text-purple-600 font-medium mb-1">completed this week</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+      <!-- Left Column (2/3) -->
+      <div class="xl:col-span-2 space-y-6">
+
+        <!-- Upcoming Session Card -->
+        <div class="bg-sage-700 rounded-xl p-6 text-white relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-16 translate-x-16"></div>
+          <div class="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-10 -translate-x-10"></div>
+          <div class="relative z-10">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-[11px] font-medium bg-white/20 px-2.5 py-1 rounded-full">Next Session</span>
+              <span class="text-[11px] text-white/60">in 2 hours 15 min</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center text-2xl shrink-0">🧠</div>
+              <div class="flex-1">
+                <h3 class="font-display font-bold text-xl">Dr. Meera Krishnan</h3>
+                <p class="text-sm text-white/70 mt-0.5">Clinical Psychologist · Depression Follow-up · Session #8</p>
+                <div class="flex items-center gap-4 mt-2">
+                  <span class="text-xs text-white/60 flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    11:30 AM — 12:30 PM
+                  </span>
+                  <span class="text-xs text-white/60 flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    Video Session
+                  </span>
+                </div>
+              </div>
+              <button class="bg-white text-sage-700 font-display font-bold text-sm px-6 py-3 rounded-xl hover:bg-sage-50 transition shrink-0 flex items-center gap-2 shadow-lg">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                Join Session
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7-Day Mood Trend -->
+        <div class="bg-white rounded-xl border border-ink-100 p-5">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-display font-bold text-base text-ink-800">Mood Trend — Last 7 Days</h3>
+            <a href="#" class="text-xs text-sage-600 hover:text-sage-700 font-medium">View 30 Days →</a>
+          </div>
+          <div class="h-44">
+            <canvas id="moodChart"></canvas>
+          </div>
+          <div class="flex items-center gap-6 mt-4 pt-4 border-t border-ink-50 text-xs text-ink-500">
+            <span>Average mood: <span class="font-semibold text-sage-600">3.8 / 5</span></span>
+            <span>Best day: <span class="font-semibold text-ink-700">Saturday</span></span>
+            <span>Pattern: <span class="font-semibold text-ink-700">Improves after sessions</span></span>
+          </div>
+        </div>
+
+        <!-- Quick Actions Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <button class="dash-card bg-white rounded-xl border border-ink-100 p-5 flex flex-col items-center gap-3 text-center group">
+            <div class="w-12 h-12 bg-sage-50 rounded-xl flex items-center justify-center group-hover:bg-sage-100 transition">
+              <svg class="w-6 h-6 text-sage-600" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+            </div>
+            <span class="text-xs font-semibold text-ink-700">Book Session</span>
+          </button>
+          
+          <button class="dash-card bg-white rounded-xl border border-ink-100 p-5 flex flex-col items-center gap-3 text-center group">
+            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-blue-100 transition">
+              <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <span class="text-xs font-semibold text-ink-700">Talk to Buddy</span>
+          </button>
+          
+          <button class="dash-card bg-white rounded-xl border border-ink-100 p-5 flex flex-col items-center gap-3 text-center group">
+            <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center group-hover:bg-purple-100 transition">
+              <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            </div>
+            <span class="text-xs font-semibold text-ink-700">CBT Exercise</span>
+          </button>
+          
+          <button class="dash-card bg-white rounded-xl border border-ink-100 p-5 flex flex-col items-center gap-3 text-center group">
+            <div class="w-12 h-12 bg-amber-50 rounded-xl flex items-center justify-center group-hover:bg-amber-100 transition">
+              <svg class="w-6 h-6 text-amber-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </div>
+            <span class="text-xs font-semibold text-ink-700">Sound Therapy</span>
+          </button>
+        </div>
+
+        <!-- Session History -->
+        <div class="bg-white rounded-xl border border-ink-100 overflow-hidden">
+          <div class="px-5 py-4 border-b border-ink-100 flex items-center justify-between">
+            <h3 class="font-display font-bold text-base text-ink-800">Recent Sessions</h3>
+            <a href="#" class="text-xs text-sage-600 hover:text-sage-700 font-medium">View All →</a>
+          </div>
+          <div class="divide-y divide-ink-50">
+            <div class="px-5 py-4 flex items-center gap-4 hover:bg-ink-50/50 transition">
+              <div class="w-9 h-9 rounded-full bg-sage-100 flex items-center justify-center text-sage-700 font-display font-bold text-xs shrink-0">MK</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-ink-800">Dr. Meera Krishnan</p>
+                <p class="text-xs text-ink-400">Depression · Session #7 · 60 min</p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class="text-xs font-medium text-ink-600">27 Feb 2026</p>
+                <div class="flex items-center gap-1 justify-end mt-1">
+                  <svg class="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <span class="text-[11px] text-ink-500">Rated 5/5</span>
+                </div>
+              </div>
+            </div>
+            <div class="px-5 py-4 flex items-center gap-4 hover:bg-ink-50/50 transition">
+              <div class="w-9 h-9 rounded-full bg-sage-100 flex items-center justify-center text-sage-700 font-display font-bold text-xs shrink-0">MK</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-ink-800">Dr. Meera Krishnan</p>
+                <p class="text-xs text-ink-400">Depression · Session #6 · 60 min</p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class="text-xs font-medium text-ink-600">20 Feb 2026</p>
+                <div class="flex items-center gap-1 justify-end mt-1">
+                  <svg class="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <span class="text-[11px] text-ink-500">Rated 4/5</span>
+                </div>
+              </div>
+            </div>
+            <div class="px-5 py-4 flex items-center gap-4 hover:bg-ink-50/50 transition">
+              <div class="w-9 h-9 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-display font-bold text-xs shrink-0">RB</div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-ink-800">Dr. Rajesh Bhatt</p>
+                <p class="text-xs text-ink-400">Anxiety · Initial Assessment · 45 min</p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class="text-xs font-medium text-ink-600">10 Feb 2026</p>
+                <div class="flex items-center gap-1 justify-end mt-1">
+                  <svg class="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <span class="text-[11px] text-ink-500">Rated 5/5</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column (1/3) -->
+      <div class="space-y-6">
+
+        <!-- AnytimeBuddy Quick Chat -->
+        <div class="bg-white rounded-xl border border-ink-100 overflow-hidden">
+          <div class="px-5 py-4 border-b border-ink-100 flex items-center gap-2">
+            <div class="w-7 h-7 bg-sage-500 rounded-lg flex items-center justify-center text-white text-sm">🤖</div>
+            <h3 class="font-display font-bold text-base text-ink-800">AnytimeBuddy</h3>
+            <span class="ml-auto text-[10px] bg-sage-50 text-sage-600 px-2 py-0.5 rounded-full font-medium">Online</span>
+          </div>
+          <div class="p-4 space-y-3 max-h-52 overflow-y-auto bg-ink-50/30">
+            <div class="flex gap-2">
+              <div class="w-6 h-6 bg-sage-500 rounded-full flex items-center justify-center text-white text-[10px] shrink-0 mt-0.5">🤖</div>
+              <div class="bg-white rounded-xl rounded-tl-sm px-3.5 py-2.5 max-w-[85%] shadow-sm">
+                <p class="text-sm text-ink-700">Good morning Priya! 🌸 I noticed you've been tracking your mood consistently this week. That's wonderful! How are you feeling right now?</p>
+              </div>
+            </div>
+            <div class="flex gap-2 justify-end">
+              <div class="bg-sage-500 text-white rounded-xl rounded-tr-sm px-3.5 py-2.5 max-w-[85%]">
+                <p class="text-sm">A bit anxious about my meeting today, but overall okay.</p>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <div class="w-6 h-6 bg-sage-500 rounded-full flex items-center justify-center text-white text-[10px] shrink-0 mt-0.5">🤖</div>
+              <div class="bg-white rounded-xl rounded-tl-sm px-3.5 py-2.5 max-w-[85%] shadow-sm">
+                <p class="text-sm text-ink-700">That's completely understandable. Would you like to try a quick 3-minute breathing exercise before your meeting? It can really help settle those nerves. 💚</p>
+              </div>
+            </div>
+          </div>
+          <div class="p-3 border-t border-ink-100 flex gap-2">
+            <input type="text" placeholder="Type a message..." class="flex-1 bg-ink-50 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-sage-200 placeholder:text-ink-400">
+            <button class="bg-sage-500 hover:bg-sage-600 text-white px-3 py-2 rounded-lg transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Progress Ring -->
+        <div class="bg-white rounded-xl border border-ink-100 p-5">
+          <h3 class="font-display font-bold text-base text-ink-800 mb-4">Treatment Progress</h3>
+          <div class="flex items-center justify-center mb-4">
+            <div class="relative">
+              <svg class="w-28 h-28 -rotate-90" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="52" stroke="#E8EFE6" stroke-width="10" fill="none"/>
+                <circle cx="60" cy="60" r="52" stroke="#4A6741" stroke-width="10" fill="none" 
+                  stroke-dasharray="327" stroke-dashoffset="82" stroke-linecap="round" class="progress-ring"/>
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="font-display text-2xl font-bold text-sage-700">75%</span>
+                <span class="text-[10px] text-ink-400">Complete</span>
+              </div>
+            </div>
+          </div>
+          <div class="space-y-2.5">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-ink-500">Sessions completed</span>
+              <span class="font-semibold text-ink-700">12 / 16</span>
+            </div>
+            <div class="w-full h-1.5 bg-ink-100 rounded-full overflow-hidden">
+              <div class="h-full bg-sage-500 rounded-full" style="width:75%"></div>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-ink-500">CBT exercises done</span>
+              <span class="font-semibold text-ink-700">18 / 24</span>
+            </div>
+            <div class="w-full h-1.5 bg-ink-100 rounded-full overflow-hidden">
+              <div class="h-full bg-purple-400 rounded-full" style="width:75%"></div>
+            </div>
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-ink-500">PHQ-9 improvement</span>
+              <span class="font-semibold text-green-600">16 → 9 (↓43%)</span>
+            </div>
+            <div class="w-full h-1.5 bg-ink-100 rounded-full overflow-hidden">
+              <div class="h-full bg-green-400 rounded-full" style="width:43%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assigned Exercises -->
+        <div class="bg-white rounded-xl border border-ink-100 overflow-hidden">
+          <div class="px-5 py-4 border-b border-ink-100 flex items-center justify-between">
+            <h3 class="font-display font-bold text-base text-ink-800">Homework</h3>
+            <span class="text-[11px] bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full font-medium">2 pending</span>
+          </div>
+          <div class="divide-y divide-ink-50">
+            <div class="px-5 py-3.5 flex items-center gap-3">
+              <div class="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-ink-700 truncate">Thought Reframing Exercise</p>
+                <p class="text-xs text-ink-400">Assigned by Dr. Meera · 15 min</p>
+              </div>
+              <button class="text-xs bg-sage-500 hover:bg-sage-600 text-white font-medium px-3 py-1.5 rounded-lg transition">Start</button>
+            </div>
+            <div class="px-5 py-3.5 flex items-center gap-3">
+              <div class="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-ink-700 truncate">Gratitude Journal Entry</p>
+                <p class="text-xs text-ink-400">Daily exercise · 5 min</p>
+              </div>
+              <button class="text-xs bg-sage-500 hover:bg-sage-600 text-white font-medium px-3 py-1.5 rounded-lg transition">Start</button>
+            </div>
+            <div class="px-5 py-3.5 flex items-center gap-3 opacity-60">
+              <div class="w-8 h-8 bg-sage-50 rounded-lg flex items-center justify-center shrink-0">
+                <svg class="w-4 h-4 text-sage-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-ink-700 truncate line-through">5-4-3-2-1 Grounding</p>
+                <p class="text-xs text-ink-400">Completed yesterday</p>
+              </div>
+              <span class="text-xs text-sage-600 font-medium">Done ✓</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Subscription Status -->
+        <div class="bg-gradient-to-br from-sage-700 to-sage-800 rounded-xl p-5 text-white">
+          <div class="flex items-center gap-2 mb-3">
+            <svg class="w-4 h-4 text-clay-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            <span class="font-display font-bold text-sm">Premium Plan</span>
+          </div>
+          <p class="text-xs text-white/60">₹299/month · Renews 15 Mar 2026</p>
+          <div class="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
+            <span class="text-[10px] text-white/50">Includes:</span>
+            <span class="text-[10px] bg-white/10 px-2 py-0.5 rounded-full">Unlimited Buddy</span>
+            <span class="text-[10px] bg-white/10 px-2 py-0.5 rounded-full">Full CBT</span>
+            <span class="text-[10px] bg-white/10 px-2 py-0.5 rounded-full">Priority</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity Timeline -->
+    <div class="mt-6 bg-white rounded-xl border border-ink-100 p-5">
+      <h3 class="font-display font-bold text-base text-ink-800 mb-4">Recent Activity</h3>
+      <div class="space-y-4">
+        <div class="flex items-start gap-4">
+          <div class="w-8 h-8 bg-green-50 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+            <span class="text-sm">😊</span>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm text-ink-700"><span class="font-semibold">Mood logged</span> — Feeling great (5/5)</p>
+            <p class="text-xs text-ink-400 mt-0.5">Today at 08:30 AM</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4">
+          <div class="w-8 h-8 bg-sage-50 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-3.5 h-3.5 text-sage-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm text-ink-700"><span class="font-semibold">CBT exercise completed</span> — 5-4-3-2-1 Grounding Technique</p>
+            <p class="text-xs text-ink-400 mt-0.5">Yesterday at 09:15 PM</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4">
+          <div class="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm text-ink-700"><span class="font-semibold">Session completed</span> with Dr. Meera Krishnan — Session #7</p>
+            <p class="text-xs text-ink-400 mt-0.5">27 Feb at 11:30 AM · Rated ★★★★★</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-4">
+          <div class="w-8 h-8 bg-purple-50 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+            <svg class="w-3.5 h-3.5 text-purple-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm text-ink-700"><span class="font-semibold">AnytimeBuddy conversation</span> — Guided breathing exercise (3 min)</p>
+            <p class="text-xs text-ink-400 mt-0.5">27 Feb at 08:45 AM</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══ JAVASCRIPT ═══ -->
+<script>
+// Sidebar
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+document.querySelectorAll('.sidebar-link').forEach(link => {
+  link.addEventListener('click', () => {
+    if (window.innerWidth < 1024) toggleSidebar();
+    document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+  });
+});
+
+// Mood selector
+const moodLabels = {
+  terrible: "Having a tough day 💙",
+  bad: "Not feeling great today",
+  okay: "Doing okay — hanging in there",
+  good: "Feeling good today! 🙂",
+  great: "Feeling great today! 🌸"
+};
+function selectMood(btn, mood) {
+  document.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('mood-label').textContent = moodLabels[mood];
+}
+
+// Mood Chart
+const moodCtx = document.getElementById('moodChart');
+if (moodCtx) {
+  new Chart(moodCtx, {
+    type: 'line',
+    data: {
+      labels: ['Thu', 'Fri', 'Sat', 'Sun', 'Mon', 'Tue', 'Wed'],
+      datasets: [{
+        label: 'Mood',
+        data: [3, 2.5, 4, 4.5, 3, 3.5, 4],
+        borderColor: '#4A6741',
+        backgroundColor: 'rgba(74, 103, 65, 0.08)',
+        borderWidth: 2.5,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#4A6741',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1A1A1A',
+          titleFont: { family: 'Outfit', size: 12 },
+          bodyFont: { family: 'DM Sans', size: 11 },
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function(context) {
+              const moods = ['','Terrible','Bad','Okay','Good','Great'];
+              return moods[Math.round(context.parsed.y)] || context.parsed.y + '/5';
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          min: 0, max: 5,
+          grid: { color: '#f5f5f5', drawBorder: false },
+          ticks: {
+            font: { family: 'DM Sans', size: 10 },
+            color: '#9A9A9A',
+            stepSize: 1,
+            callback: function(value) {
+              const labels = ['','😢','😔','😐','🙂','😊'];
+              return labels[value] || '';
+            }
+          }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: 'DM Sans', size: 11 }, color: '#6B6B6B' }
+        }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>

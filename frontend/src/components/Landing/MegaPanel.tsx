@@ -40,8 +40,8 @@ export const MegaPanel: React.FC<MegaPanelProps> = ({
       }`}
     >
       <ul className={`grid ${mobile ? 'grid-cols-1' : desktopGridClass} gap-x-3 gap-y-1.5`}>
-        {items.map((item) => (
-          <li key={item.route}>
+        {items.map((item, index) => (
+          <li key={`${item.route}-${item.title}-${index}`}>
             <Link
               to={item.route}
               onClick={onNavigate}

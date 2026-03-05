@@ -102,6 +102,38 @@ export type TherapistAnalyticsSummary = {
 	sessions: number;
 };
 
+export type MoodPredictionResponse = {
+	predictions: Array<{ date: string; predictedMood: number; weekday?: string }>;
+	confidencePct: number;
+	trendDirection: 'IMPROVING' | 'STABLE' | 'DETERIORATING' | 'VOLATILE' | string;
+	deteriorationAlert: boolean;
+	influencingFactors?: {
+		top_positive_factors?: string[];
+		top_negative_factors?: string[];
+		sleep_mood_correlation?: string;
+		activity_impact?: Record<string, string>;
+		weekly_pattern?: string;
+		clinical_note?: string;
+		fallback_used?: boolean;
+	} | null;
+	insufficientData?: boolean;
+	message?: string;
+};
+
+export type MoodAccuracyResponse = {
+	mae: number;
+	within2Pct: number;
+	targetWithin2Pct: number;
+	targetMet: boolean;
+	totalEvaluated: number;
+	recent: any[];
+};
+
+export type MoodHistoryResponse = {
+	mood_logs: Array<{ moodValue?: number; loggedAt?: string; createdAt?: string }>;
+	legacy_mood_entries: Array<{ moodScore?: number; date?: string; createdAt?: string }>;
+};
+
 export const therapistApi = {
 	getDashboard: async (): Promise<TherapistDashboardResponse> => {
 		const res = await http.get('/v1/therapists/me/dashboard');
@@ -134,5 +166,17 @@ export const therapistApi = {
 	getAnalyticsSummary: async (): Promise<TherapistAnalyticsSummary> => {
 		const res = await http.get('/v1/therapists/me/analytics/summary');
 		return unwrap<TherapistAnalyticsSummary>(res.data);
+	},
+	getPatientMoodPrediction: async (userId: string): Promise<MoodPredictionResponse> => {
+		const res = await http.get(`/v1/mood/${encodeURIComponent(userId)}/prediction`);
+		return unwrap<MoodPredictionResponse>(res.data);
+	},
+	getPatientMoodHistory: async (userId: string): Promise<MoodHistoryResponse> => {
+		const res = await http.get(`/v1/mood/${encodeURIComponent(userId)}/history`);
+		return unwrap<MoodHistoryResponse>(res.data);
+	},
+	getPatientMoodAccuracy: async (userId: string): Promise<MoodAccuracyResponse> => {
+		const res = await http.get(`/v1/mood/${encodeURIComponent(userId)}/accuracy`);
+		return unwrap<MoodAccuracyResponse>(res.data);
 	},
 };

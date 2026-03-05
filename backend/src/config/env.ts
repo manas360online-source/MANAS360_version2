@@ -1,7 +1,7 @@
-type NodeEnv = 'development' | 'test' | 'production';
+type NodeEnv = 'development' | 'test' | 'production' | 'staging';
 
 const parseNodeEnv = (value: string | undefined): NodeEnv => {
-	if (value === 'development' || value === 'test' || value === 'production') {
+	if (value === 'development' || value === 'test' || value === 'production' || value === 'staging') {
 		return value;
 	}
 
@@ -15,7 +15,7 @@ const parsePort = (value: string | undefined): number => {
 		return parsedPort;
 	}
 
-	return 5001;
+	return 3000;
 };
 
 const parseBoolean = (value: string | undefined, fallback = false): boolean => {
@@ -37,7 +37,7 @@ const parseNumber = (value: string | undefined, fallback: number): number => {
 };
 
 const parseCorsOrigins = (value: string | undefined): string[] => {
-	const raw = value ?? 'http://localhost:3000';
+	const raw = value ?? 'http://localhost:5173';
 	return raw
 		.split(',')
 		.map((origin) => origin.trim())

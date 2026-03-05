@@ -79,6 +79,7 @@ exports.validateUpdateMeRequest = [
     }),
     (0, express_validator_1.body)('name').optional().isString().trim().isLength({ min: 2, max: 50 }).withMessage('name must be 2-50 characters'),
     (0, express_validator_1.body)('phone').optional().isString().trim().matches(/^\+?[1-9]\d{1,14}$/).withMessage('phone must be valid E.164 format'),
+    (0, express_validator_1.body)('showNameToProviders').optional().isBoolean().withMessage('showNameToProviders must be a boolean'),
     (req, _res, next) => applyValidationResult(req, next),
     extractValidatedProfileUpdate,
 ];

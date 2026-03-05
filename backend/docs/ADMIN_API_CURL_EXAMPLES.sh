@@ -4,7 +4,7 @@
 # Usage: Replace $TOKEN with your actual JWT bearer token and $BASE_URL with your API endpoint
 
 # Configuration
-BASE_URL="http://localhost:3000/api/v1/admin"
+BASE_URL="http://localhost:5000/api/v1/admin"
 TOKEN="your_jwt_token_here"
 CONTENT_TYPE="Content-Type: application/json"
 

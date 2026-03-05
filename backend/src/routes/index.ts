@@ -16,11 +16,14 @@ import patientSelfRoutes from './patient-self.routes';
 import certificationRoutes from './certification.routes';
 import landingRoutes from './landing.routes';
 import chatRoutes from './chat.routes';
+import riskAnalyticsRoutes from './riskAnalytics.routes';
 
 const router = Router();
 
 router.get('/health', (_req, res) => {
 	res.status(200).json({
+		status: 'ok',
+		server: 'running',
 		ok: true,
 		service: 'manas360-backend',
 		timestamp: new Date().toISOString(),
@@ -49,6 +52,7 @@ router.use('/landing', landingRoutes);
 router.use('/v1/landing', landingRoutes);
 router.use('/webhooks', webhookRoutes);
 router.use('/chat', chatRoutes);
+router.use('/v1', riskAnalyticsRoutes);
 
 export default router;
 
